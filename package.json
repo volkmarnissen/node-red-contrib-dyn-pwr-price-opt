@@ -1,0 +1,41 @@
+{
+  "name": "node-red-contrib-dyn-pwr-price-opt",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "build": "echo '{\"type\": \"commonjs\"}' >dist/package.json && tsc && cd src&& cp *.html ../dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "node-red": {
+    "nodes": {
+      "Dyn. Pwr. consumption optimization": "./dist/dynamic-power-prices-optimizer-node.js"
+    }
+  },
+  "description": "",
+  "dependencies": {
+    "@types/node": "^22.7.4",
+    "jest": "^29.7.0",
+    "lodash": "^4.17.21",
+    "lodash.clonedeep": "^4.5.0",
+    "luxon": "^3.5.0",
+    "node-red-typescript-essentials": "github:geonet-mrn/node-red-typescript-essentials",
+    "ts-mocha": "^10.0.0",
+    "tsc": "^2.0.4"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/chai": "^5.0.0",
+    "@types/jest": "^29.5.13",
+    "@types/luxon": "^3.4.2",
+    "@types/sinon": "^17.0.3",
+    "chai": "^5.1.1",
+    "sinon": "^19.0.2",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
