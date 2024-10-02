@@ -7,7 +7,7 @@
       
     var  typedInp = {
               default: defaultType,
-              types:["str","num","bool"],
+              types:["str","num","bool", "json"],
               typeField: nt
        }
       var n = $("#node-input-outputValue" + index )

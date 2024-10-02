@@ -57,7 +57,10 @@ export  class Strategy<Config, Payload>    {
              case "num": 
              val.value = Number(config[typeField]);
              break;
-             default: break;
+             case "json": 
+             val.value = config[typeField];
+             break;
+           default: break;
         }
         val.type = (config[typeField + "Type"]);
         config[typeField] = val
