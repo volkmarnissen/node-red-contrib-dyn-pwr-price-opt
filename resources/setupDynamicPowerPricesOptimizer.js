@@ -22,15 +22,6 @@
       
   }
 
-  function generateOutputValueFields(index, label, prefix, additionalInputField){
-
-     var rc =   (prefix?prefix:"") + '<div class="form-row">\n' +
-      ' <label for="node-input-outputValue' + index + '" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> '+ label + '</label>\n' + 
-      ' <input type="text" id="node-input-outputValue' + index + '" style="width: 180px">\n' +
-      ' <input type="hidden" id="node-input-outputValue' + index + 'Type">\n' + (additionalInputField ? additionalInputField:"")+
-      '</div>\n'
-      return rc;
-  }
   const moreLabel= "More"
   const lessLabel= "Less"
   function toggleIntermediate(){
@@ -51,11 +42,11 @@
   function generateOutputValues(){
 
     let indexes= [ 
-          {field: "First", label:"Cheapest", defaultType: "bool", additionalInputField: firstOptionAndMoreButton},
-           {field: "Second", label:"Intermediate 1", defaultType: "num", prefix:'<div class="form-row" id="intermediate" style="display:none">\n'},
-           {field: "Third", label:"Intermediate 2", defaultType: "num"},
-           {field: "Last", label:"Most expensive", defaultType: "bool", prefix:'\n</div>', additionalInputField: lastOptionButton},
-           {field: "NoPrices", label:"No Prices", defaultType: "bool"}
+          {field: "First",  defaultType: "bool"},
+           {field: "Second",  defaultType: "num"},
+           {field: "Third", defaultType: "num"},
+           {field: "Last",  defaultType: "bool"},
+           {field: "NoPrices", defaultType: "bool"}
           ]
 
     for( n of indexes) 
@@ -78,7 +69,7 @@
       toTime: { value: 3},
 
       outputValueFirst: { value: "test"},
-      outputValueFirstType: { value: "bool", required:true  },
+      outputValueFirstType: { value: "str", required:true  },
       outputValueSecond: { value: 45 , required:false,  validate: RED.validators.typedInput("outputValueSecondType", false) },
       outputValueSecondType: { value: "num", required:true  },
       outputValueThird: {  required:false,  validate: RED.validators.typedInput("outputValueThirdType", false) },
