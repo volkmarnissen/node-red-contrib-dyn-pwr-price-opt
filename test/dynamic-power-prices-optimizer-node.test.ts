@@ -7,6 +7,7 @@ import { RED } from "./RED";
 import fs from 'fs';
 import {NodeTestHelper} from  "node-red-node-test-helper";
 import { join } from "path";
+import { PriceSources } from "../src/priceconverter";
 let helper = new NodeTestHelper()
 helper.init(require.resolve("node-red"))
 
@@ -16,14 +17,14 @@ const config = {
   z: "a644eb1881b7f311",
   name: "Price Ranges",
   tolerance: "",
-  pricedatelimit: "18",
+  pricedatelimit: "5",
   fromTime: 1,
   toTime: 3,
   outputValueFirst: '{"value": 45.1,"type":"test"}',
   outputValueFirstType: "json",
   outputValueSecond: 45,
   outputValueSecondType: "num",
-  outputValueThird: "",
+  outputValueThird: "This is a text",
   outputValueThirdType: "num",
   outputValueLast: "false",
   outputValueLastType: "bool",
@@ -37,7 +38,7 @@ const config = {
   wires: [[]],
 };
 let priceDataPostfix = ":00:00.000+02:00";
-let datePrefix = "2024-10-02T";
+let datePrefixes:string[] = ["2021-10-10T", "2021-10-11T"];
 let priceDataTemplate: number[] = [0.2, 0.24, 0.26, 0.23, 0.19, 0.22];
 var myformat = new Intl.NumberFormat("en-US", {
   minimumIntegerDigits: 2,
@@ -45,12 +46,13 @@ var myformat = new Intl.NumberFormat("en-US", {
 });
 function buildPriceData(): any {
   var rc: any[] = [];
+  for( var prefix of datePrefixes)
   for (var i = 0; i < 4; i++)
     for (var j = 0; j < 6; j++) {
       var h = i * 6 + j;
       var pd = {
-        value: priceDataTemplate[j].toString(),
-        start: datePrefix + myformat.format(h) + priceDataPostfix,
+        value: priceDataTemplate[j],
+        start: Date.parse(prefix + myformat.format(h) + priceDataPostfix),
       };
       rc.push(pd);
     }
@@ -60,11 +62,18 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
   it("Generate schedule from payload", () => {
     var classType = registerNodeForTest(RED);
     var node = new classType(config);
+    node.send = function (this:any, msg:any){
+      expect( msg[0].payload.value) .toBeFalsy()
+      expect(msg[0].payload.schedule.length).toBe(node["config"].pricedatelimit)
+    }
     expect(node["config"].outputValueFirst.value.value).toBe(45.1 )
     expect(node["config"].outputValueFirst.value.type).toBe("test")
 
     expect(node["config"].outputValueFirst.type).toBe("json");
-    var testDate = new Date(2024, 10, 2, 2, 15, 0);
+    var testDate = new Date(2021, 9, 10, 2, 15, 0);
+    node["priceInfo"] = {source: PriceSources.other, priceDatas:buildPriceData() }
+    node['onFullHour'](testDate.getTime())
+
    // node.onPriceData(node["toPriceData"](buildPriceData()), testDate.getTime());
     console.log("XXX");
   });

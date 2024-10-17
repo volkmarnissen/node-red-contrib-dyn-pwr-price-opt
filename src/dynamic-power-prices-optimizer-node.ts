@@ -59,7 +59,13 @@ export default function register(RED: any): any {
     waitUntilNextHourTimer: any = undefined;
 
     onTime(time: number): void {
-      this.scheduleTimerOnFullHours(time)
+      if( this.schedule.length == 0 ){
+        let range = this.getPricesInDateRange(time)
+        this.validatePriceData(time, range)
+        this.buildSchedule(range)
+        this.status.bind(this)({ fill:"green", shape:"dot", text: "Last Update at " + new Date(time).toLocaleTimeString()})      
+      }
+      this.send.bind(this)([ {payload:{schedule: this.schedule, time: time, value: this.getValueFromSchedule(time)  }}]) 
     }
 
     private buildSchedule(range:PriceData[]){
@@ -99,7 +105,13 @@ export default function register(RED: any): any {
     }
 
     private getPricesInDateRange(startTime:number):PriceData[]{
-      return this.priceInfo.priceDatas.filter(data=>data.start >= startTime && data.start < startTime + this.getDuration() )
+      // Make sure, that time is in Range
+      let d = new Date(startTime)
+      d.setMinutes(0)
+      d.setSeconds(0)
+      d.setMilliseconds(0)
+      let t = d.getTime()
+      return this.priceInfo.priceDatas.filter(data=>data.start >= t && data.start < t + this.getDuration() )
     }
     private getDuration(){
       return  this.config.pricedatelimit * 60 * 60 * 1000 // hours to millis
@@ -115,6 +127,8 @@ export default function register(RED: any): any {
       }
     }
     getValueFromSchedule(time:number):any{
+      if(this.schedule.length == 0)
+        throw new Error( "No Schedule available") 
       let rc = this.schedule.filter(entry=>entry.start <= time && entry.start + 60*60 * 1000 > entry.start )
       if( rc.length > 1)
         throw new Error( "More than one value found")
@@ -124,12 +138,8 @@ export default function register(RED: any): any {
     }
     onFullHour(time:number = Date.now()) {
       try{
-        let range = this.getPricesInDateRange(time)
-        this.validatePriceData(time, range)
-        this.buildSchedule(range)
-        this.send([ {payload:{schedule: this.schedule, time: time, value: this.getValueFromSchedule(time)  }}]) 
-        this.status({ fill:"green", shape:"dot", text: "Last Update at " + new Date(time).toLocaleTimeString()})      
-      }
+        this.onTime(time)
+       }
       catch( e:any){
         this.status({ fill:"red", shape:"dot", text:e.message})
       }
