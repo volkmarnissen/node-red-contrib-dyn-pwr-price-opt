@@ -1,12 +1,16 @@
-<script type="text/javascript" src="resources/node-red-contrib-dyn-pwr-price-opt/setupDynamicPowerPricesOptimizer.js">
- 
-</script>
+<script
+  type="text/javascript"
+  src="resources/node-red-contrib-dyn-pwr-price-opt/setupDynamicPowerPricesOptimizer.js"
+></script>
 
-<script type="text/html" data-template-name="Dyn. Pwr. consumption optimization">
+<script
+  type="text/html"
+  data-template-name="Dyn. Pwr. consumption optimization"
+>
   <div class="form-row">
       <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
       <input type="text" id="node-input-name" placeholder="Name" style="width: 240px">
-  </div>   
+  </div>
   <div class="form-row">
       <label for="node-input-pricedatelimit" style="text-indent: -8px;"><i class="fa fa-clock-o"></i> Price Date Limit:</label>
       <select  id="node-input-pricedatelimit" style="width: 100px">
@@ -35,8 +39,8 @@
         <option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option>
        </select>
     </div>
- 
-  
+
+
     <h2 class="divOutputValues">Price Ranges</h2>
     <div class="form-row">
       <label for="node-input-outputValueFirst" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>  Cheapest </label>
@@ -54,16 +58,16 @@
         <option value="16">16 h</option>
         <option value="20">20 h</option>
         <option value="24">24 h</option>
-      </select> 
+      </select>
       <button id="more-button" type="button" class=" red-ui-button red-ui-button" onclick="toggleIntermediate()" >More</button>
     </div>
- 
+
     <div class="form-row" id="intermediate" style="display:none">
       <div class="form-row" >
         <label for="node-input-tolerance" >Price Tolerance<br/>Cheapest</label>
         <input type="number" id="node-input-tolerance" style="width: 100px">
-      </div>    
-      <div class="form-row">  
+      </div>
+      <div class="form-row">
 
       <label for="node-input-outputValueSecond" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>  Intermediate 1 </label>
       <input type="text" id="node-input-outputValueSecond" style="width: 100px">
@@ -76,7 +80,7 @@
     </div>
   </div>
   <div class="form-row">
- 
+
     <label for="node-input-outputValueLast" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>  Most Expensive </label>
     <input type="text" id="node-input-outputValueLast" style="width: 100px">
     <input type="hidden" id="node-input-outputValueLastType">
@@ -98,97 +102,99 @@
                autocomplete="off"><span>Send when rescheduling</span>
         </label>
     </div>
-
 </script>
 
-<script type="text/markdown" data-help-name="Dyn. Pwr. consumption optimization">
-This node splits the price data into several groups. Starting with the cheapest group, ending with the most expensive group.
+<script
+  type="text/markdown"
+  data-help-name="Dyn. Pwr. consumption optimization"
+>
+  This node splits the price data into several groups. Starting with the cheapest group, ending with the most expensive group.
 
-You can define a individual output value for each group.
-Depending on the price for electric power for a given time, the system assigns an output group to each hour within the defined time range.
+  You can define a individual output value for each group.
+  Depending on the price for electric power for a given time, the system assigns an output group to each hour within the defined time range.
 
-The output value for the group will be sent to the output.
-    
-    
-### Inputs
-    
-1. payload (priceData) :  Price data for electric power supplier (E.g. Tibber).
-2. Time : Time to be considered for calculating the output
-    
-### Outputs
-    
-1. Node : payload (string) : The output value for the current time
-      time: The time either from input or current time
-    
-2. Node : The schedule (for Merge Schedule): payload (string) : the standard error of the command.
-    
-### Details
-A typical use case for this node is optimzation of power consumption for hot water generation in a tank by a heat pump.
+  The output value for the group will be sent to the output.
 
-The output of each range will set the minimum tank temperature for the given price range in the heat pump.
-If the electric power is cheap, the temperature is lower and the heat pump will start hot water generation also if the tank temperature is higher.
-If it's very high, the temperature is the higher.
-You can press the **"More"** - Button to add more price ranges. They are in between lowest price range and highest price range.
+  ### Inputs
 
-####Example:
-|Configuration| Value|
-|-------------|---|
-|Group Cheapest Ouput Value (min temperature)|42|
-|Group Most Expensive Ouput Value (min temperature)|45|
+  1. payload (priceData) : Price data for electric power supplier (E.g. Tibber).
+  2. Time : Time to be considered for calculating the output
 
-|Time Range|Price|Output Group|Output Value|
-|-------------|----|-----------------------------|----|    
-|00:00 - 01:00|0.25| Price >0.24 => Most Expensive |45|
-|01:00 - 02:00|0.24| Price <=0.24 => Cheapest|42|
-|02:00 - 03:00|0.27| Price >0.24 => Most Expensive|45|
-|03:00 - 04:00|0.22|group 1 (cheapest)|42|
-|04:00 - 05:00|0.23|group 1 (cheapest)|42|
-|05:00 - 06:00|0.28|Price >0.24 => Most Expensive|45|
+  ### Outputs
 
-If the temperature in the tank is 43, the heatpump will start only in the Cheapest Range.<br/>
-If the temperature is below 42, the heatpump will also start in the Most Expensive Range.
-### Schedule
+  1. Node : payload (string) : The output value for the current time
+     time: The time either from input or current time
+  2. Node : The schedule (for Merge Schedule): payload (string) : the standard error of the command.
 
-### Special Options
-The Cheapest Range has the following options:
-| Option| Description|
-|**"1 h"** and "** 2 h** "**| The
+  ### Details
 
+  A typical use case for this node is optimzation of power consumption for hot water generation in a tank by a heat pump.
 
-You can set an additional Price Range node to set the lowest tank temperature or the hysteresis (Delta of maximum tank temperature mins minimum tank temperature)
-The default algorithm will split the price/time table into ranges having the same number of entries.
-Example:
-```
-In a schedule 00:00-12:00 with two ranges, the ranges will have 6 entries each.
-```
+  The output of each range will set the minimum tank temperature for the given price range in the heat pump.
+  If the electric power is cheap, the temperature is lower and the heat pump will start hot water generation also if the tank temperature is higher.
+  If it's very high, the temperature is the higher.
+  You can press the **"More"** - Button to add more price ranges. They are in between lowest price range and highest price range.
 
+  ####Example:
+  |Configuration| Value|
+  |-------------|---|
+  |Group Cheapest Ouput Value (min temperature)|42|
+  |Group Most Expensive Ouput Value (min temperature)|45|
 
-### Example:
-The Compare Range is configured to 00:00-00:00 <br/> 
-The prices of the full day will be compared to each other<br/>
-The output values are configured as: "50:1,47,45"<br/>
-The cheapest group (50:1) will only contain one value for the cheapest price of the day.<br/> 
-If you control the temperature set points of a heat pump with this node, you can increase the chance, that the heat pump uses this point in time for heating.
+  | Time Range    | Price | Output Group                  | Output Value |
+  | ------------- | ----- | ----------------------------- | ------------ |
+  | 00:00 - 01:00 | 0.25  | Price >0.24 => Most Expensive | 45           |
+  | 01:00 - 02:00 | 0.24  | Price <=0.24 => Cheapest      | 42           |
+  | 02:00 - 03:00 | 0.27  | Price >0.24 => Most Expensive | 45           |
+  | 03:00 - 04:00 | 0.22  | group 1 (cheapest)            | 42           |
+  | 04:00 - 05:00 | 0.23  | group 1 (cheapest)            | 42           |
+  | 05:00 - 06:00 | 0.28  | Price >0.24 => Most Expensive | 45           |
 
+  If the temperature in the tank is 43, the heatpump will start only in the Cheapest Range.<br/>
+  If the temperature is below 42, the heatpump will also start in the Most Expensive Range.
 
-|Time Range|Price|Output Group|Output Value|
-|-------------|----|-----------------------------|----|    
-|00:00 - 01:00|0.25| group 2 (intermediate price)|47|
-|01:00 - 02:00|0.24| group 2 (intermediate price)|47|
-|02:00 - 03:00|0.27| group 3 (most expensive)|45|
-|03:00 - 04:00|0.22|group 1 (cheapest)|50|
-|... |...|...|...|
+  ### Schedule
 
-    `msg.payload` is used as the payload of the published message.
-    If it contains an Object it will be converted to a JSON string before being sent.
-    If it contains a binary Buffer the message will be published as-is.
-    
-    The topic used can be configured in the node or, if left blank, can be set
-    `msg.topic`.
-    
-    Likewise the QoS and retain values can be configured in the node or, if left
-    blank, set by `msg.qos` and `msg.retain` respectively.
-    
-    ### References
-    Please read more in the [node documentation](https://powersaver.no/nodes/ps-strategy-price-ranges)
+  ### Special Options
+
+  The Cheapest Range has the following options:
+  | Option| Description|
+  |**"1 h"** and "** 2 h** "\*\*| The
+
+  You can set an additional Price Range node to set the lowest tank temperature or the hysteresis (Delta of maximum tank temperature mins minimum tank temperature)
+  The default algorithm will split the price/time table into ranges having the same number of entries.
+  Example:
+
+  ```
+  In a schedule 00:00-12:00 with two ranges, the ranges will have 6 entries each.
+  ```
+
+  ### Example:
+
+  The Compare Range is configured to 00:00-00:00 <br/>
+  The prices of the full day will be compared to each other<br/>
+  The output values are configured as: "50:1,47,45"<br/>
+  The cheapest group (50:1) will only contain one value for the cheapest price of the day.<br/>
+  If you control the temperature set points of a heat pump with this node, you can increase the chance, that the heat pump uses this point in time for heating.
+
+  | Time Range    | Price | Output Group                 | Output Value |
+  | ------------- | ----- | ---------------------------- | ------------ |
+  | 00:00 - 01:00 | 0.25  | group 2 (intermediate price) | 47           |
+  | 01:00 - 02:00 | 0.24  | group 2 (intermediate price) | 47           |
+  | 02:00 - 03:00 | 0.27  | group 3 (most expensive)     | 45           |
+  | 03:00 - 04:00 | 0.22  | group 1 (cheapest)           | 50           |
+  | ...           | ...   | ...                          | ...          |
+
+      `msg.payload` is used as the payload of the published message.
+      If it contains an Object it will be converted to a JSON string before being sent.
+      If it contains a binary Buffer the message will be published as-is.
+
+      The topic used can be configured in the node or, if left blank, can be set
+      `msg.topic`.
+
+      Likewise the QoS and retain values can be configured in the node or, if left
+      blank, set by `msg.qos` and `msg.retain` respectively.
+
+      ### References
+      Please read more in the [node documentation](https://powersaver.no/nodes/ps-strategy-price-ranges)
 </script>

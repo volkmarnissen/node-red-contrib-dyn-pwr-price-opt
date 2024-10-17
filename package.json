@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "jest",
-    "build": "echo '{\"type\": \"commonjs\"}' >dist/package.json && tsc && cd src&& cp *.html ../dist"
+    "build": "echo '{\"type\": \"commonjs\"}' >dist/package.json && tsc && cd src&& cp *.html ../dist",
+    "prettier": "prettier --write '**/*.{ts,js,css,html,tsx}'"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +24,7 @@
     "lodash.clonedeep": "^4.5.0",
     "luxon": "^3.5.0",
     "node-red-typescript-essentials": "github:geonet-mrn/node-red-typescript-essentials",
+    "prettier": "^3.3.3",
     "ts-mocha": "^10.0.0",
     "tsc": "^2.0.4"
   },
@@ -31,8 +33,12 @@
     "@types/chai": "^5.0.0",
     "@types/jest": "^29.5.13",
     "@types/luxon": "^3.4.2",
+    "@types/node-red": "^1.3.5",
+    "@types/node-red-node-test-helper": "^0.3.4",
     "@types/sinon": "^17.0.3",
     "chai": "^5.1.1",
+    "node-red": "^4.0.5",
+    "node-red-node-test-helper": "^0.3.4",
     "sinon": "^19.0.2",
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.1",

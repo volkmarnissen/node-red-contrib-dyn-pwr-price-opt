@@ -1,66 +1,182 @@
-import { DateTime }  from 'luxon';
-import { MessageType, PriceData, PriceRangeConfig, PriceRangePayload, TypeDescription } from './@types/dynamic-power-prices-optimizer-node';
-import { Strategy } from './strategy';
+import { DateTime } from "luxon";
+import {
+  MessageType,
+  PriceData,
+  PriceRangeConfig,
+  PriceRangePayload,
+  TypeDescription,
+} from "./@types/dynamic-power-prices-optimizer-node";
+import { Strategy } from "./strategy";
+import { convertPrice, IpriceInfo } from "./priceconverter";
 
+const tConfig: TypeDescription = {
+  typeFields: [
+    "outputValueFirst",
+    "outputValueSecond",
+    "outputValueThird",
+    "outputValueLast",
+    "outputValueNoPrices",
+  ],
+  numberFields: ["fromTime", "toTime", "tolerance", "outputValueHours", "pricedatelimit"],
+  booleanFields: ["sendCurrentValueWhenRescheduling"],
+};
+const tMsg: TypeDescription = {
+  typeFields: [
+    "outputValueFirst",
+    "outputValueSecond",
+    "outputValueThird",
+    "outputValueLast",
+    "outputValueNoPrices",
+  ],
+  numberFields: ["fromTime", "toTime", "tolerance", "pricedatelimit"],
+  booleanFields: ["sendCurrentValueWhenRescheduling"],
+};
+enum RangeIds {
+  cheapest=0,
+  intermediate1 = 1,
+  intermediate2 = 2,
+  mostExpensive = 3
 
-const tConfig:TypeDescription = {
-  typeFields: ["outputValueFirst",
- "outputValueSecond",
- "outputValueThird",
- "outputValueLast",
- "outputValueNoPrices"
-],
- numberFields:[
- "fromTime",
- "toTime",
- "tolerance",
- "pricedatelimit",
-],
- booleanFields:[ "sendCurrentValueWhenRescheduling"]    
 }
-const  tMsg:TypeDescription = {
- typeFields: ["outputValueFirst",
-"outputValueSecond",
-"outputValueThird",
-"outputValueLast",
-"outputValueNoPrices"
-],
-numberFields:[
-"fromTime",
-"toTime",
-"tolerance",
-"pricedatelimit",
-],
-booleanFields:[ "sendCurrentValueWhenRescheduling"]    
+interface ScheduleEntry extends PriceData {
+  returnValue?:any
 }
+const toleranceInMillis = 100
+export default function register(RED: any): any {
+  class StrategyDynamicPowerPricesOptimizerNode extends Strategy<PriceRangeConfig> {
+    priceInfo:IpriceInfo |undefined = undefined
+    schedule:ScheduleEntry[] = []
+    constructor( config: any) {
+      super(config, tConfig, RED);
+      this.registerInputListener(/^payload$/g, this.readPriceData.bind(this))
+    }
+    readPriceData(msg:any){
+       let rc = convertPrice(msg)
+       if( undefined != rc)
+        this.priceInfo = rc
+    }
 
-export default function register(RED: any):any {
+    waitUntilNextHourTimer: any = undefined;
 
-  class StrategyDynamicPowerPricesOptimizerNode  extends Strategy<PriceData,PriceRangeConfig> {
-      constructor(public config: any) {
-          super(config, tConfig, RED)          
-       }
-       onPriceData(_priceData: PriceData[]): void {
-         console.log("Now it's working")
-       }
-       onTime(time: string): void {
-        throw new Error('Method not implemented.');
+    onTime(time: number): void {
+      this.scheduleTimerOnFullHours(time)
+    }
+
+    private buildSchedule(range:PriceData[]){
+      range.forEach(entry=>{ this.schedule.push(entry)})
+      // sort by price
+      this.schedule.sort((a,b)=>a.value - b.value)
+      // Assign cheapest hours to first range
+      let cheapIdx = this.config.outputValueHours
+      let idx = 0
+      let rangeValues:any[] = []
+    
+      if( cheapIdx ){
+        this.schedule.every(entry=>{ 
+          // entry.rangeId = RangeIds.cheapest ;
+          entry.returnValue = this.config.outputValueFirst
+          idx++
+          return idx < cheapIdx })
+          
+      }else
+        rangeValues.push( this.config.outputValueFirst)
+       if( this.config.outputValueSecond != undefined ) {
+        rangeValues.push( this.config.outputValueSecond)
+        }
+     
+      if( this.config.outputValueThird != undefined ) 
+        rangeValues.push( this.config.outputValueThird)
+      if( this.config.outputValueLast != undefined ) 
+        rangeValues.push( this.config.outputValueLast)
+      // divide other ranges in equal pieces
+      let rangeSize = (this.config.pricedatelimit - idx) / rangeValues.length
+      for( let i = 0; i < this.config.pricedatelimit - idx; i++){
+          let rangeIdx = Math.floor(i / rangeSize )
+          this.schedule[idx + i].returnValue = rangeValues[rangeIdx]
       }
+      //Sort by hour again
+      this.schedule.sort((a,b)=>a.start - b.start)
+    }
+
+    private getPricesInDateRange(startTime:number):PriceData[]{
+      return this.priceInfo.priceDatas.filter(data=>data.start >= startTime && data.start < startTime + this.getDuration() )
+    }
+    private getDuration(){
+      return  this.config.pricedatelimit * 60 * 60 * 1000 // hours to millis
+     }
+    private validatePriceData(time:number, range:PriceData[]):void{
+      // We require at least as many entries as configured in pricedatelimit
+      if( this.priceInfo == undefined ){
+        throw new Error( "No Price Data")
+      }
+      let end = time + this.getDuration()
+      if(range.length < this.config.pricedatelimit){
+        throw new Error("Not enough Price Data")
+      }
+    }
+    getValueFromSchedule(time:number):any{
+      let rc = this.schedule.filter(entry=>entry.start <= time && entry.start + 60*60 * 1000 > entry.start )
+      if( rc.length > 1)
+        throw new Error( "More than one value found")
+      if( rc.length == 0)
+        throw new Error( "No value found") 
+      return rc[0].returnValue.value
+    }
+    onFullHour(time:number = Date.now()) {
+      try{
+        let range = this.getPricesInDateRange(time)
+        this.validatePriceData(time, range)
+        this.buildSchedule(range)
+        this.send([ {payload:{schedule: this.schedule, time: time, value: this.getValueFromSchedule(time)  }}]) 
+        this.status({ fill:"green", shape:"dot", text: "Last Update at " + new Date(time).toLocaleTimeString()})      
+      }
+      catch( e:any){
+        this.status({ fill:"red", shape:"dot", text:e.message})
+      }
+    }
+    scheduleTimerOnFullHours(time: number) {
+      let nextFullHour = new Date(time+toleranceInMillis);
+      if (
+        nextFullHour.getMilliseconds() < 2 * toleranceInMillis &&
+        nextFullHour.getSeconds() == 0 &&
+        nextFullHour.getMinutes() == 0
+      ){
+         this.waitUntilNextHourTimer = setInterval(
+          this.onFullHour,
+          1000 * 60 * 60,
+        );
+        this.onFullHour(time)
+      }
+      else {
+        nextFullHour = new Date(time)
+        nextFullHour.setHours(nextFullHour.getHours() + 1);
+        nextFullHour.setMilliseconds(0);
+        nextFullHour.setSeconds(0);
+        nextFullHour.setMinutes(0);
+        let nextFullHourTime = nextFullHour.getTime();
+        setTimeout(() => {
+          this.scheduleTimerOnFullHours(nextFullHour.getTime());
+          this.onFullHour();
+        }, nextFullHourTime - time);
+      }
+    }
   }
   // In unit tests, registerType returns the node class in production, the return code is not used
-  return RED.nodes.registerType("Dyn. Pwr. consumption optimization", StrategyDynamicPowerPricesOptimizerNode);
-};
+  return RED.nodes.registerType(
+    "Dyn. Pwr. consumption optimization",
+    StrategyDynamicPowerPricesOptimizerNode,
+  );
+}
 
 //For unit tests: Calls RED.nodes.registerType with mocked  RED
-export var registerNodeForTest = register
+export var registerNodeForTest = register;
 
 // export function StrategyPriceRangesNode(RED:any ) {
 //   function StrategyPriceRangesNode(config) {
 //       RED.nodes.createNode(this, config);
 //     const node = this;
 //     node.status({});
-    
-  
+
 //     node.on("close", function () {
 //       clearTimeout(node.schedulingTimeout);
 //     });
@@ -81,15 +197,16 @@ function doPlanning(node, priceData) {
   const periodStatus = [];
   const startIndexes = [];
   const endIndexes = [];
-  let currentStatus = from < (to === 0 && to !== from ? 24 : to) ? "Outside" : "StartMissing";
+  let currentStatus =
+    from < (to === 0 && to !== from ? 24 : to) ? "Outside" : "StartMissing";
   let hour;
   startTimes.forEach((st, i) => {
     hour = DateTime.fromISO(st).hour;
     if (hour === to && to === from && currentStatus === "Inside") {
       endIndexes.push(i - 1);
     }
-    if (hour === to && to !== from && i > 0 ) {
-      if(currentStatus !== "StartMissing") {
+    if (hour === to && to !== from && i > 0) {
+      if (currentStatus !== "StartMissing") {
         endIndexes.push(i - 1);
       }
       currentStatus = "Outside";
@@ -122,12 +239,12 @@ function doPlanning(node, priceData) {
       s === "Outside"
         ? node.outputOutsidePeriod
         : s === "StartMissing" || s === "EndMissing"
-        ? node.outputIfNoSchedule
-        : null;
+          ? node.outputIfNoSchedule
+          : null;
   });
 
   startIndexes.forEach((s, i) => {
-  //  makePlan(node, values, onOff, s, endIndexes[i]);
+    //  makePlan(node, values, onOff, s, endIndexes[i]);
   });
 
   return onOff;
