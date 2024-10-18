@@ -10,7 +10,7 @@ export const RED = {
     createNode: (obj: Object, config: any): void => {
       obj["on"] = REDon;
       obj["send"] = REDsend;
-      obj["status"] =REDstatus;
+      obj["status"] = REDstatus;
     },
     registerType: (name: string, theClass: any): Type => {
       return theClass;

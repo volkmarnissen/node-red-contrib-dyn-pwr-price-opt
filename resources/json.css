@@ -1,0 +1,35 @@
+.border {
+  background: #ffffff;
+  overflow: auto;
+  width: auto;
+  border: solid gray;
+  border-width: 0.1em 0.1em 0.1em 0.8em;
+  padding: 0.2em 0.6em;
+}
+.element {
+  color: #007700;
+}
+.text {
+  background-color: #fff0f0;
+}
+.value {
+  color: #0000dd;
+  font-weight: bold;
+}
+.comment {
+  background-color: #fff0f0;
+}
+pre {
+  margin: 0;
+  line-height: 125%;
+  white-space: pre-line;
+}
+th,
+td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+tr:hover {
+  background-color: coral;
+}

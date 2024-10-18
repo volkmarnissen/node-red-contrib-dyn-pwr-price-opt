@@ -3,16 +3,20 @@ import {
   PriceData,
   TypeDescription,
 } from "./@types/dynamic-power-prices-optimizer-node";
-export const dataSeparator= '|'
-// Strategy creates the node, does type conversions for Config 
+export const dataSeparator = "|";
+// Strategy creates the node, does type conversions for Config
 // It reacts on input messages by doing type conversion and forwarding to onPayload, onTime or onConfig
 export class Strategy<Config> {
   private RED: any;
-  private inputListeners: {re:RegExp, func: (msg:any)=>void}[] = []
+  private inputListeners: { re: RegExp; func: (msg: any) => void }[] = [];
   protected config: Config;
   private on: (event: string, handler: Function) => void;
-  protected send:(outputs:any[])=>void;
-  protected status:(options:{ fill: string, shape: string, text: string })=>void;
+  protected send: (outputs: any[]) => void;
+  protected status: (options: {
+    fill: string;
+    shape: string;
+    text: string;
+  }) => void;
   constructor(
     config: any,
     private configType: TypeDescription,
@@ -24,34 +28,37 @@ export class Strategy<Config> {
     this.overwriteConfigProperties(this.config, config);
     this.on("input", this.onInput.bind(this));
     this.on("close", this.onClose.bind(this));
-    this.registerInputListener(/^config$/g,this.onConfigLocal.bind(this))
+    this.registerInputListener(/^config$/g, this.onConfigLocal.bind(this));
   }
-  protected registerInputListener( re:RegExp, func: (msg:any)=>void){
-    this.inputListeners.push({re:re,func:func})
+  protected registerInputListener(re: RegExp, func: (msg: any) => void) {
+    this.inputListeners.push({ re: re, func: func });
   }
   // builds recursive list of the data structure in node
-  private buildNameList(node:any, nodePath:string, result:{name: string, node:any} []){
-    if( Array.isArray(node ) || node.length != undefined)
-      return
-    let newNames = Object.getOwnPropertyNames(node)
-    if(undefined != newNames)
-      newNames.forEach(name=>{
-        let newNodePath = nodePath == "" ? name: nodePath + dataSeparator + name
-         result.push( {name: newNodePath, node: node[name] }  )
-         this.buildNameList(node[name], newNodePath, result)
-       })
+  private buildNameList(
+    node: any,
+    nodePath: string,
+    result: { name: string; node: any }[],
+  ) {
+    if (Array.isArray(node) || node.length != undefined) return;
+    let newNames = Object.getOwnPropertyNames(node);
+    if (undefined != newNames)
+      newNames.forEach((name) => {
+        let newNodePath =
+          nodePath == "" ? name : nodePath + dataSeparator + name;
+        result.push({ name: newNodePath, node: node[name] });
+        this.buildNameList(node[name], newNodePath, result);
+      });
   }
   protected onInput(msg: MessageType): void {
     let time = msg.payload.time;
     if (time == undefined) time = Date.now();
-    let nodes:{name: string, node:any} [] = []
-    this.buildNameList(msg,"",nodes)
-    this.inputListeners.forEach(listener=>{
-      nodes.forEach(node=>{
-        if( node.name.match(listener.re))
-          listener.func(msg)
-      })
-    })
+    let nodes: { name: string; node: any }[] = [];
+    this.buildNameList(msg, "", nodes);
+    this.inputListeners.forEach((listener) => {
+      nodes.forEach((node) => {
+        if (node.name.match(listener.re)) listener.func(msg);
+      });
+    });
     if (time != undefined) this.onTime(time);
   }
 

@@ -21,7 +21,6 @@ const lessLabel = "Less";
 function toggleIntermediate() {
   var button = document.getElementById("more-button");
   var div = document.getElementById("intermediate");
-
   if (button.innerText == moreLabel) {
     button.innerText = lessLabel;
     div.style.display = "";
@@ -48,8 +47,7 @@ RED.nodes.registerType("Dyn. Pwr. consumption optimization", {
   category: "Power Saver",
   color: "#a6bbcf",
   defaults: {
-    name: { value: "Price Ranges" },
-    tolerance: {},
+    name: { value: "Dyn. Pwr. consumption optimization" },
     pricedatelimit: {
       value: 24,
       required: true,
@@ -76,18 +74,16 @@ RED.nodes.registerType("Dyn. Pwr. consumption optimization", {
       validate: RED.validators.typedInput("outputValueLastType", false),
     },
     outputValueLastType: { value: "bool", required: true },
-    outputValueNoPrices: {
-      value: false,
-      required: true,
-      validate: RED.validators.typedInput("outputValueNoPricesType", false),
-    },
-    outputValueNoPricesType: { value: "bool", required: true },
-    outputValueHours: {
-      value: 2,
-      required: true,
-    },
     outputValueLastOption: {
       value: 1,
+      required: true,
+    },
+    outputValueLastMaxHours: {
+      value: 12,
+      required: true,
+    },
+    outputValueLastPercentage: {
+      value: 20,
       required: true,
     },
     sendCurrentValueWhenRescheduling: {
@@ -118,7 +114,5 @@ RED.nodes.registerType("Dyn. Pwr. consumption optimization", {
     });
     generateOutputValues();
   },
-  oneditsave: function () {
-    //this.tolerance = $("#node-input-tolerance").val()
-  },
+  oneditsave: function () {},
 });

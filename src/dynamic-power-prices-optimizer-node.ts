@@ -17,7 +17,13 @@ const tConfig: TypeDescription = {
     "outputValueLast",
     "outputValueNoPrices",
   ],
-  numberFields: ["fromTime", "toTime", "tolerance", "outputValueHours", "pricedatelimit"],
+  numberFields: [
+    "fromTime",
+    "toTime",
+    "tolerance",
+    "outputValueHours",
+    "pricedatelimit",
+  ],
   booleanFields: ["sendCurrentValueWhenRescheduling"],
 };
 const tMsg: TypeDescription = {
@@ -32,133 +38,144 @@ const tMsg: TypeDescription = {
   booleanFields: ["sendCurrentValueWhenRescheduling"],
 };
 enum RangeIds {
-  cheapest=0,
+  cheapest = 0,
   intermediate1 = 1,
   intermediate2 = 2,
-  mostExpensive = 3
-
+  mostExpensive = 3,
 }
 interface ScheduleEntry extends PriceData {
-  returnValue?:any
+  returnValue?: any;
 }
-const toleranceInMillis = 100
+const toleranceInMillis = 100;
 export default function register(RED: any): any {
   class StrategyDynamicPowerPricesOptimizerNode extends Strategy<PriceRangeConfig> {
-    priceInfo:IpriceInfo |undefined = undefined
-    schedule:ScheduleEntry[] = []
-    constructor( config: any) {
+    priceInfo: IpriceInfo | undefined = undefined;
+    schedule: ScheduleEntry[] = [];
+    constructor(config: any) {
       super(config, tConfig, RED);
-      this.registerInputListener(/^payload$/g, this.readPriceData.bind(this))
+      this.registerInputListener(/^payload$/g, this.readPriceData.bind(this));
     }
-    readPriceData(msg:any){
-       let rc = convertPrice(msg)
-       if( undefined != rc)
-        this.priceInfo = rc
+    readPriceData(msg: any) {
+      let rc = convertPrice(msg);
+      if (undefined != rc) this.priceInfo = rc;
     }
 
     waitUntilNextHourTimer: any = undefined;
 
     onTime(time: number): void {
-      if( this.schedule.length == 0 ){
-        let range = this.getPricesInDateRange(time)
-        this.validatePriceData(time, range)
-        this.buildSchedule(range)
-        this.status.bind(this)({ fill:"green", shape:"dot", text: "Last Update at " + new Date(time).toLocaleTimeString()})      
+      if (this.schedule.length == 0) {
+        let range = this.getPricesInDateRange(time);
+        this.validatePriceData(time, range);
+        this.buildSchedule(range);
+        this.status.bind(this)({
+          fill: "green",
+          shape: "dot",
+          text: "Last Update at " + new Date(time).toLocaleTimeString(),
+        });
       }
-      this.send.bind(this)([ {payload:{schedule: this.schedule, time: time, value: this.getValueFromSchedule(time)  }}]) 
+      this.send.bind(this)([
+        {
+          payload: {
+            schedule: this.schedule,
+            time: time,
+            value: this.getValueFromSchedule(time),
+          },
+        },
+      ]);
     }
 
-    private buildSchedule(range:PriceData[]){
-      range.forEach(entry=>{ this.schedule.push(entry)})
+    private buildSchedule(range: PriceData[]) {
+      range.forEach((entry) => {
+        this.schedule.push(entry);
+      });
       // sort by price
-      this.schedule.sort((a,b)=>a.value - b.value)
+      this.schedule.sort((a, b) => a.value - b.value);
       // Assign cheapest hours to first range
-      let cheapIdx = this.config.outputValueHours
-      let idx = 0
-      let rangeValues:any[] = []
-    
-      if( cheapIdx ){
-        this.schedule.every(entry=>{ 
+      let cheapIdx = this.config.outputValueHours;
+      let idx = 0;
+      let rangeValues: any[] = [];
+
+      if (cheapIdx) {
+        this.schedule.every((entry) => {
           // entry.rangeId = RangeIds.cheapest ;
-          entry.returnValue = this.config.outputValueFirst
-          idx++
-          return idx < cheapIdx })
-          
-      }else
-        rangeValues.push( this.config.outputValueFirst)
-       if( this.config.outputValueSecond != undefined ) {
-        rangeValues.push( this.config.outputValueSecond)
-        }
-     
-      if( this.config.outputValueThird != undefined ) 
-        rangeValues.push( this.config.outputValueThird)
-      if( this.config.outputValueLast != undefined ) 
-        rangeValues.push( this.config.outputValueLast)
+          entry.returnValue = this.config.outputValueFirst;
+          idx++;
+          return idx < cheapIdx;
+        });
+      } else rangeValues.push(this.config.outputValueFirst);
+      if (this.config.outputValueSecond != undefined) {
+        rangeValues.push(this.config.outputValueSecond);
+      }
+
+      if (this.config.outputValueThird != undefined)
+        rangeValues.push(this.config.outputValueThird);
+      if (this.config.outputValueLast != undefined)
+        rangeValues.push(this.config.outputValueLast);
       // divide other ranges in equal pieces
-      let rangeSize = (this.config.pricedatelimit - idx) / rangeValues.length
-      for( let i = 0; i < this.config.pricedatelimit - idx; i++){
-          let rangeIdx = Math.floor(i / rangeSize )
-          this.schedule[idx + i].returnValue = rangeValues[rangeIdx]
+      let rangeSize = (this.config.pricedatelimit - idx) / rangeValues.length;
+      for (let i = 0; i < this.config.pricedatelimit - idx; i++) {
+        let rangeIdx = Math.floor(i / rangeSize);
+        this.schedule[idx + i].returnValue = rangeValues[rangeIdx];
       }
       //Sort by hour again
-      this.schedule.sort((a,b)=>a.start - b.start)
+      this.schedule.sort((a, b) => a.start - b.start);
     }
 
-    private getPricesInDateRange(startTime:number):PriceData[]{
+    private getPricesInDateRange(startTime: number): PriceData[] {
       // Make sure, that time is in Range
-      let d = new Date(startTime)
-      d.setMinutes(0)
-      d.setSeconds(0)
-      d.setMilliseconds(0)
-      let t = d.getTime()
-      return this.priceInfo.priceDatas.filter(data=>data.start >= t && data.start < t + this.getDuration() )
+      let d = new Date(startTime);
+      d.setMinutes(0);
+      d.setSeconds(0);
+      d.setMilliseconds(0);
+      let t = d.getTime();
+      return this.priceInfo.priceDatas.filter(
+        (data) => data.start >= t && data.start < t + this.getDuration(),
+      );
     }
-    private getDuration(){
-      return  this.config.pricedatelimit * 60 * 60 * 1000 // hours to millis
-     }
-    private validatePriceData(time:number, range:PriceData[]):void{
+    private getDuration() {
+      return this.config.pricedatelimit * 60 * 60 * 1000; // hours to millis
+    }
+    private validatePriceData(time: number, range: PriceData[]): void {
       // We require at least as many entries as configured in pricedatelimit
-      if( this.priceInfo == undefined ){
-        throw new Error( "No Price Data")
+      if (this.priceInfo == undefined) {
+        throw new Error("No Price Data");
       }
-      let end = time + this.getDuration()
-      if(range.length < this.config.pricedatelimit){
-        throw new Error("Not enough Price Data")
+      let end = time + this.getDuration();
+      if (range.length < this.config.pricedatelimit) {
+        throw new Error("Not enough Price Data");
       }
     }
-    getValueFromSchedule(time:number):any{
-      if(this.schedule.length == 0)
-        throw new Error( "No Schedule available") 
-      let rc = this.schedule.filter(entry=>entry.start <= time && entry.start + 60*60 * 1000 > entry.start )
-      if( rc.length > 1)
-        throw new Error( "More than one value found")
-      if( rc.length == 0)
-        throw new Error( "No value found") 
-      return rc[0].returnValue.value
+    getValueFromSchedule(time: number): any {
+      if (this.schedule.length == 0) throw new Error("No Schedule available");
+      let rc = this.schedule.filter(
+        (entry) =>
+          entry.start <= time && entry.start + 60 * 60 * 1000 > entry.start,
+      );
+      if (rc.length > 1) throw new Error("More than one value found");
+      if (rc.length == 0) throw new Error("No value found");
+      return rc[0].returnValue.value;
     }
-    onFullHour(time:number = Date.now()) {
-      try{
-        this.onTime(time)
-       }
-      catch( e:any){
-        this.status({ fill:"red", shape:"dot", text:e.message})
+    onFullHour(time: number = Date.now()) {
+      try {
+        this.onTime(time);
+      } catch (e: any) {
+        this.status({ fill: "red", shape: "dot", text: e.message });
       }
     }
     scheduleTimerOnFullHours(time: number) {
-      let nextFullHour = new Date(time+toleranceInMillis);
+      let nextFullHour = new Date(time + toleranceInMillis);
       if (
         nextFullHour.getMilliseconds() < 2 * toleranceInMillis &&
         nextFullHour.getSeconds() == 0 &&
         nextFullHour.getMinutes() == 0
-      ){
-         this.waitUntilNextHourTimer = setInterval(
+      ) {
+        this.waitUntilNextHourTimer = setInterval(
           this.onFullHour,
           1000 * 60 * 60,
         );
-        this.onFullHour(time)
-      }
-      else {
-        nextFullHour = new Date(time)
+        this.onFullHour(time);
+      } else {
+        nextFullHour = new Date(time);
         nextFullHour.setHours(nextFullHour.getHours() + 1);
         nextFullHour.setMilliseconds(0);
         nextFullHour.setSeconds(0);
