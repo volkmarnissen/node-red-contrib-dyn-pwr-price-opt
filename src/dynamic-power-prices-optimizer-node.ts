@@ -22,7 +22,7 @@ const tConfig: TypeDescription = {
     "toTime",
     "tolerance",
     "outputValueHours",
-    "pricedatelimit",
+    "storagecapacity",
   ],
   booleanFields: ["sendCurrentValueWhenRescheduling"],
 };
@@ -34,7 +34,7 @@ const tMsg: TypeDescription = {
     "outputValueLast",
     "outputValueNoPrices",
   ],
-  numberFields: ["fromTime", "toTime", "tolerance", "pricedatelimit"],
+  numberFields: ["fromTime", "toTime", "tolerance", "storagecapacity"],
   booleanFields: ["sendCurrentValueWhenRescheduling"],
 };
 enum RangeIds {
@@ -73,7 +73,8 @@ export default function register(RED: any): any {
           text: "Last Update at " + new Date(time).toLocaleTimeString(),
         });
       }
-      this.send.bind(this)([
+      try{
+       this.send([
         {
           payload: {
             schedule: this.schedule,
@@ -81,7 +82,12 @@ export default function register(RED: any): any {
             value: this.getValueFromSchedule(time),
           },
         },
-      ]);
+      ]);       
+      }catch( e)
+      {
+        console.log( e)
+      }
+
     }
 
     private buildSchedule(range: PriceData[]) {
@@ -91,31 +97,53 @@ export default function register(RED: any): any {
       // sort by price
       this.schedule.sort((a, b) => a.value - b.value);
       // Assign cheapest hours to first range
-      let cheapIdx = this.config.outputValueHours;
       let idx = 0;
       let rangeValues: any[] = [];
-
-      if (cheapIdx) {
+      let cheapestHours = this.config.outputValueHours
+      let mostExpHours = this.config.outputValueLastHours
+      if( cheapestHours == undefined )
+        cheapestHours = 0
+      if( mostExpHours == undefined )
+        mostExpHours = 0
+      while( cheapestHours + mostExpHours > this.config.storagecapacity){
+        if( cheapestHours > 0 && cheapestHours > mostExpHours)
+          cheapestHours--;
+        else
+          mostExpHours--;
+      }
+      if (cheapestHours) {
         this.schedule.every((entry) => {
           // entry.rangeId = RangeIds.cheapest ;
           entry.returnValue = this.config.outputValueFirst;
           idx++;
-          return idx < cheapIdx;
+          return idx < cheapestHours;
         });
-      } else rangeValues.push(this.config.outputValueFirst);
+      } else 
+        rangeValues.push(this.config.outputValueFirst);
+
       if (this.config.outputValueSecond != undefined) {
         rangeValues.push(this.config.outputValueSecond);
       }
 
       if (this.config.outputValueThird != undefined)
         rangeValues.push(this.config.outputValueThird);
-      if (this.config.outputValueLast != undefined)
+
+      let expIdx = mostExpHours
+      if (expIdx) {
+        this.schedule.forEach((entry, idx) => {
+          // entry.rangeId = RangeIds.cheapest ;
+          if(idx >= this.schedule.length - mostExpHours - 1 && 
+            entry.returnValue == undefined)
+            entry.returnValue = this.config.outputValueLast;
+        });
+      } else if (this.config.outputValueLast != undefined)
         rangeValues.push(this.config.outputValueLast);
+      
       // divide other ranges in equal pieces
-      let rangeSize = (this.config.pricedatelimit - idx) / rangeValues.length;
-      for (let i = 0; i < this.config.pricedatelimit - idx; i++) {
+      let rangeSize = (this.config.storagecapacity - cheapestHours - mostExpHours) / rangeValues.length;
+      for (let i = 0; i < this.config.storagecapacity - cheapestHours - mostExpHours; i++) {
         let rangeIdx = Math.floor(i / rangeSize);
-        this.schedule[idx + i].returnValue = rangeValues[rangeIdx];
+        this.schedule[cheapestHours + i].returnValue = rangeValues[rangeIdx];
       }
       //Sort by hour again
       this.schedule.sort((a, b) => a.start - b.start);
@@ -133,15 +161,15 @@ export default function register(RED: any): any {
       );
     }
     private getDuration() {
-      return this.config.pricedatelimit * 60 * 60 * 1000; // hours to millis
+      return this.config.storagecapacity * 60 * 60 * 1000; // hours to millis
     }
     private validatePriceData(time: number, range: PriceData[]): void {
-      // We require at least as many entries as configured in pricedatelimit
+      // We require at least as many entries as configured in storagecapacity
       if (this.priceInfo == undefined) {
         throw new Error("No Price Data");
       }
       let end = time + this.getDuration();
-      if (range.length < this.config.pricedatelimit) {
+      if (range.length < this.config.storagecapacity) {
         throw new Error("Not enough Price Data");
       }
     }
@@ -151,9 +179,10 @@ export default function register(RED: any): any {
         (entry) =>
           entry.start <= time && entry.start + 60 * 60 * 1000 > entry.start,
       );
-      if (rc.length > 1) throw new Error("More than one value found");
-      if (rc.length == 0) throw new Error("No value found");
-      return rc[0].returnValue.value;
+      if (rc.length > 1) throw new Error("More than one value found  in schedule");
+      if (rc.length == 0) throw new Error("No value found  in schedule");
+      if (rc[0].returnValue == undefined) throw new Error("No return value found in schedule");
+     return rc[0].returnValue.value;
     }
     onFullHour(time: number = Date.now()) {
       try {
@@ -197,102 +226,3 @@ export default function register(RED: any): any {
 
 //For unit tests: Calls RED.nodes.registerType with mocked  RED
 export var registerNodeForTest = register;
-
-// export function StrategyPriceRangesNode(RED:any ) {
-//   function StrategyPriceRangesNode(config) {
-//       RED.nodes.createNode(this, config);
-//     const node = this;
-//     node.status({});
-
-//     node.on("close", function () {
-//       clearTimeout(node.schedulingTimeout);
-//     });
-
-//     node.on("input", function (msg) {
-//       strategyOnInput(node, fixOutputValues(config, tConfig), fixOutputValues(msg,tMsg), doPlanning, calcNullSavings);
-//     });
-//   }
-//   RED.nodes.registerType("ps-strategy-price-ranges", StrategyPriceRangesNode);
-// };
-
-function doPlanning(node, priceData) {
-  const values = priceData.map((pd) => pd.value);
-  const startTimes = priceData.map((pd) => pd.start);
-
-  const from = parseInt(node.fromTime);
-  const to = parseInt(node.toTime);
-  const periodStatus = [];
-  const startIndexes = [];
-  const endIndexes = [];
-  let currentStatus =
-    from < (to === 0 && to !== from ? 24 : to) ? "Outside" : "StartMissing";
-  let hour;
-  startTimes.forEach((st, i) => {
-    hour = DateTime.fromISO(st).hour;
-    if (hour === to && to === from && currentStatus === "Inside") {
-      endIndexes.push(i - 1);
-    }
-    if (hour === to && to !== from && i > 0) {
-      if (currentStatus !== "StartMissing") {
-        endIndexes.push(i - 1);
-      }
-      currentStatus = "Outside";
-    }
-    if (hour === from) {
-      currentStatus = "Inside";
-      startIndexes.push(i);
-    }
-    periodStatus[i] = currentStatus;
-  });
-  if (currentStatus === "Inside" && hour !== (to === 0 ? 23 : to - 1)) {
-    // Last period incomplete
-    let i = periodStatus.length - 1;
-    do {
-      periodStatus[i] = "EndMissing";
-      hour = DateTime.fromISO(startTimes[i]).hour;
-      i--;
-    } while (periodStatus[i] === "Inside" && hour !== from);
-    startIndexes.splice(startIndexes.length - 1, 1);
-  }
-  if (hour === (to === 0 ? 23 : to - 1)) {
-    endIndexes.push(startTimes.length - 1);
-  }
-
-  const onOff = [];
-
-  // Set onOff for hours that will not be planned
-  periodStatus.forEach((s, i) => {
-    onOff[i] =
-      s === "Outside"
-        ? node.outputOutsidePeriod
-        : s === "StartMissing" || s === "EndMissing"
-          ? node.outputIfNoSchedule
-          : null;
-  });
-
-  startIndexes.forEach((s, i) => {
-    //  makePlan(node, values, onOff, s, endIndexes[i]);
-  });
-
-  return onOff;
-}
-
-// function makePlan(node, values, onOff, fromIndex, toIndex) {
-//   const valuesInPeriod = values.slice(fromIndex, toIndex + 1);
-//   const res = node.doNotSplit
-//     ? getBestContinuous(valuesInPeriod, node.hoursOn)
-//     : getBestX(valuesInPeriod, node.hoursOn);
-//   const sumPriceOn = res.reduce((p, v, i) => {
-//     return p + (v ? valuesInPeriod[i] : 0);
-//   }, 0);
-//   const average = sumPriceOn / node.hoursOn;
-//   res.forEach((v, i) => {
-//     onOff[fromIndex + i] =
-//       node.maxPrice == null
-//         ? v
-//         : node.doNotSplit
-//         ? v && average <= node.maxPrice
-//         : v && valuesInPeriod[i] <= node.maxPrice;
-//   });
-//   return onOff;
-// }

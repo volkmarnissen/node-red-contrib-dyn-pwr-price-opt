@@ -4,7 +4,7 @@ export interface PriceRangeConfig {
   tolerance?: number;
   fromtime: number;
   toTime: number;
-  pricedatelimit: number;
+  storagecapacity: number;
 
   outputValueFirst: ValueType;
   outputValueSecond: ValueType;
@@ -12,7 +12,7 @@ export interface PriceRangeConfig {
   outputValueLast: ValueType;
   outputValueNoPrices: ValueType;
   outputValueHours: number;
-  outputValueLastOption: number;
+  outputValueLastHours: number;
   sendCurrentValueWhenRescheduling: boolean;
 }
 export interface ScheduleEntryType {

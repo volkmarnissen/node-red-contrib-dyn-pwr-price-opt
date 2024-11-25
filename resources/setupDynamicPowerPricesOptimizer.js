@@ -16,8 +16,8 @@ function generateOutputValueTypedInput(index, defaultType) {
   }
 }
 
-const moreLabel = "More";
-const lessLabel = "Less";
+const moreLabel = "Show";
+const lessLabel = "Hide";
 function toggleIntermediate() {
   var button = document.getElementById("more-button");
   var div = document.getElementById("intermediate");
@@ -48,7 +48,7 @@ RED.nodes.registerType("Dyn. Pwr. consumption optimization", {
   color: "#a6bbcf",
   defaults: {
     name: { value: "Dyn. Pwr. consumption optimization" },
-    pricedatelimit: {
+    storagecapacity: {
       value: 24,
       required: true,
     },
@@ -74,22 +74,9 @@ RED.nodes.registerType("Dyn. Pwr. consumption optimization", {
       validate: RED.validators.typedInput("outputValueLastType", false),
     },
     outputValueLastType: { value: "bool", required: true },
-    outputValueLastOption: {
+    outputValueLastHours: {
       value: 1,
       required: true,
-    },
-    outputValueLastMaxHours: {
-      value: 12,
-      required: true,
-    },
-    outputValueLastPercentage: {
-      value: 20,
-      required: true,
-    },
-    sendCurrentValueWhenRescheduling: {
-      value: "true",
-      required: true,
-      align: "left",
     },
   },
   inputs: 1,

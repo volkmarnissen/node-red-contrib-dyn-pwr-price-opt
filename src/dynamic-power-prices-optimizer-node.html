@@ -11,13 +11,16 @@
       <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
       <input type="text" id="node-input-name" placeholder="Name" style="width: 240px">
   </div>
-  <div class="form-row">
-      <label for="node-input-pricedatelimit" style="text-indent: -8px;"><i class="fa fa-clock-o"></i> Price Date Limit:</label>
-      <select  id="node-input-pricedatelimit" style="width: 100px">
+  <hr/>
+  <h2>Storage</h2>
+    <div class="form-row">
+      <label for="node-input-storagecapacity" style="text-indent: -8px;"><i class="fa fa-clock-o"></i> Storage Capacity:</label>
+      <select  id="node-input-storagecapacity" style="width: 100px">
         <option value="24">24 h</option><option value="18">18 h</option><option value="12">12 h</option><option value="6">6 h</option>
       </select>
     </div>
-  <h2>Schedule</h2>
+    <hr/>
+    <h2>Schedule</h2>
   <div class="form-row">
       <label for="node-input-fromTime" style="text-indent: -8px;"><i class="fa fa-clock-o"></i> Active during <br/>[h of day]:</label>
       <select  id="node-input-fromTime" style="width: 100px">
@@ -40,30 +43,33 @@
        </select>
     </div>
 
-
+    <hr/>
     <h2 class="divOutputValues">Price Ranges</h2>
     <h3 class="divOutputValues">Cheapest</h3>
    <div class="form-row">
-      <label for="node-input-outputValueFirst" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>  Cheapest </label>
+      <label for="node-input-outputValueFirst" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Value</label>
       <input type="text" id="node-input-outputValueFirst" style="width: 100px">
       <input type="hidden" id="node-input-outputValueFirstType">
+   </div>
+   <div class="form-row">
+      <label for="node-input-outputValueHours" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Number of Hours</label>   
       <select  id="node-input-outputValueHours" style="width: 100px" title="Number of hours in the range">
         <option value="0">Not fixed</option>
-        <option value="1">1 h</option>
-        <option value="2">2 h</option>
-        <option value="3">3 h</option>
-        <option value="5">5 h</option>
-        <option value="7">7 h</option>
-        <option value="10">10 h</option>
-        <option value="13">13 h</option>
-        <option value="16">16 h</option>
-        <option value="20">20 h</option>
-        <option value="24">24 h</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="10">10</option>
+        <option value="13">13</option>
+        <option value="16">16</option>
+        <option value="20">20</option>
+        <option value="24">24</option>
       </select>
-      <button id="more-button" type="button" class=" red-ui-button red-ui-button" onclick="toggleIntermediate()" >More</button>
     </div>
+    <h3 class="divOutputValues">Intermediate  <button id="more-button" type="button" class=" red-ui-button red-ui-button" onclick="toggleIntermediate()" >Show</button></h3>
+
     <div id="intermediate" style="display:none">
-      <h3 class="divOutputValues">Intermediate</h3>
 
       <div class="form-row" >
 
@@ -79,32 +85,25 @@
   </div>
   <h3 class="divOutputValues">Most Expensive</h3>
     <div class="form-row" >
-    <label for="node-input-outputValueLast" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>  Most Expensive </label>
+    <label for="node-input-outputValueLast" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>Value</label>
     <input type="text" id="node-input-outputValueLast" style="width: 100px">
     <input type="hidden" id="node-input-outputValueLastType">
-    <select  id="node-input-outputValueLastOption" style="width: 160px">
-      <option value="0">No Option</option>
-      <option value="1">max 1 h consecutive</option>
+  </div>
+  <div class="form-row">
+    <label for="node-input-outputValueLastHours" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Number of Hours</label>   
+    <select  id="node-input-outputValueLastHours" style="width: 160px">
+      <option value="0">Not fixed</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="5">5</option>
+      <option value="7">7</option>
+      <option value="10">10</option>
+      <option value="13">13</option>
+      <option value="16">16</option>
+      <option value="20">20</option>
+      <option value="24">24</option>
     </select>
-    </div>
-    <div class="form-row">
-
-      <label for="node-input-outputValueLastMaxHours" >Max hours<br/>Prices in group</label>
-
-      <select  id="node-input-outputValueLastMaxHours" style="width: 100px">
-        <option value="1">max 1h</option>
-        <option value="3">max 3h</option>
-        <option value="6">max 6h</option>
-        <option value="9">max 9h</option>
-        <option value="12">max 12h</option>
-      </select>
-      <select  id="node-input-outputValueLastPercentage" style="width: 160px">
-        <option value="5">highest 5% </option>
-        <option value="10">highest 10%</option>
-        <option value="20">highest 20%</option>
-        <option value="30">highest 30%</option>
-        <option value="40">highest 40%</option>
-      </select>
     </div>
   </div>
  
@@ -194,7 +193,7 @@
                   <dd>How many Prices should the cheapest price group contain?</dd>
                 </dl>
                 <dl class="message-properties">
-                  <dt >pricedatelimit
+                  <dt >storagecapacity
                     <span class="property-type">"num" as string </span>
                   </dt>
                   <dd>Number of hours to be considered to build all price groups. A meaningful value is maximal number of hours the device can be switched off</dd>

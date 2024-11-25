@@ -5,19 +5,52 @@ import { registerNodeForTest } from "./../src/dynamic-power-prices-optimizer-nod
 import powerPriceOptimizer from "./../src/dynamic-power-prices-optimizer-node";
 import { RED } from "./RED";
 import fs from "fs";
-import { NodeTestHelper } from "node-red-node-test-helper";
+import { NodeTestHelper, TestFlows } from "node-red-node-test-helper";
 import { join } from "path";
 import { PriceSources } from "../src/priceconverter";
 let helper = new NodeTestHelper();
 helper.init(require.resolve("node-red"));
-
+type OnOutputFunction = (msg:any)=>void 
+function executeFlow( attrs:any, onOutput:OnOutputFunction ):void{
+  try {
+    let flow = [Object.assign({
+      id: "powerPriceOptimizer",
+      type: "Dyn. Pwr. consumption optimization",
+      name: "Receive prices",
+      outputValueFirst: '{ "hotwatertargettemp": 48 }',
+      outputValueFirstType: "json",
+      outputValueLast: '{ "hotwatertargettemp": 45 }',
+      outputValueLastType: "json",
+      wires: [["output"]],
+    }, attrs ),
+    { id: "output", type: "helper" },
+]
+    helper.load(powerPriceOptimizer, flow, function () {
+      const powerPriceOptimizerNode = helper.getNode("powerPriceOptimizer");
+      const outputNode = helper.getNode("output");
+      outputNode.on("input", onOutput);
+      let data = fs.readFileSync(
+        "test/data/tibber-prices-single-home.json",
+        { encoding: "utf-8" },
+      );
+      let msg = JSON.parse(data);
+   
+      msg.payload.time = Date.parse("2021-10-11T05:00:00.000+02:00");
+      powerPriceOptimizerNode.receive(msg);
+   })
+  }
+  catch(e){
+    console.log(e)
+  }
+  
+}
 const config = {
   id: "0c44d5befabf904d",
   type: "Dyn. Pwr. consumption optimization",
   z: "a644eb1881b7f311",
   name: "Price Ranges",
   tolerance: "",
-  pricedatelimit: "5",
+  storagecapacity: "5",
   fromTime: 1,
   toTime: 3,
   outputValueFirst: '{"value": 45.1,"type":"test"}',
@@ -31,7 +64,7 @@ const config = {
   outputValueNoPrices: "false",
   outputValueNoPricesType: "bool",
   outputValueHours: 2,
-  outputValueLastOption: 1,
+  outputValueLastHours: 1,
   sendCurrentValueWhenRescheduling: true,
   x: 130,
   y: 140,
@@ -65,7 +98,7 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
     node.send = function (this: any, msg: any) {
       expect(msg[0].payload.value).toBeFalsy();
       expect(msg[0].payload.schedule.length).toBe(
-        node["config"].pricedatelimit,
+        node["config"].storagecapacity,
       );
     };
     expect(node["config"].outputValueFirst.value.value).toBe(45.1);
@@ -135,45 +168,49 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
         done();
       });
     });
+
+   
     it("should have priceData", function () {
       return new Promise<void>((resolve, reject) => {
-        JSON.parse('{ "hotwatertargettemp" : 45 }');
-        const flow = [
-          {
-            id: "powerPriceOptimizer",
-            type: "Dyn. Pwr. consumption optimization",
-            name: "Receive prices",
-            outputValueFirst: '{ "hotwatertargettemp": 48 }',
-            outputValueFirstType: "json",
-            outputValueLast: '{ "hotwatertargettemp": 45 }',
-            outputValueLastType: "json",
-            pricedatelimit: "24",
-            outputValueHours: "3",
-            wires: [["output"]],
-          },
-          { id: "output", type: "helper" },
-        ];
-        helper.load(powerPriceOptimizer, flow, function () {
-          const powerPriceOptimizerNode = helper.getNode("powerPriceOptimizer");
-          const outputNode = helper.getNode("output");
-          outputNode.on("input", function (msg) {
+        executeFlow({
+          storagecapacity : "24",
+          outputValueHours : "3"
+        },function (msg){
             expect((msg.payload as any).value.hotwatertargettemp).toBe(45);
             let rc = (msg.payload as any).schedule.filter(
               (entry) => entry.returnValue.value.hotwatertargettemp == 48,
             );
             expect(rc.length).toBe(3);
+            expect(msg.payload.schedule.length).toBe(24)
+            expect(msg.payload.schedule[0].start ).toBe(msg.payload.time)
             resolve();
-          });
-          let data = fs.readFileSync(
-            "test/data/tibber-prices-single-home.json",
-            { encoding: "utf-8" },
-          );
-          let msg = JSON.parse(data);
-
-          msg.payload.time = Date.parse("2021-10-11T05:00:00.000+02:00");
-          powerPriceOptimizerNode.receive(msg);
+          } )
         });
       });
+      it(" mostExpensive hours set", function () {
+        return new Promise<void>((resolve, reject) => {
+          executeFlow({
+            storagecapacity : "24",
+            outputValueLastHours : "5"
+          },function (msg){
+              expect((msg.payload as any).value.hotwatertargettemp).toBe(48);
+              let rc = (msg.payload as any).schedule.filter(
+                (entry) => entry.returnValue.value.hotwatertargettemp == 45,
+              );
+              expect(rc.length).toBe(5);
+              resolve();
+            } )
+          });
+        });
+        it(" no hours set:: complete schedule has return values", function () {
+          return new Promise<void>((resolve, reject) => {
+            executeFlow({
+              storagecapacity : "24",
+            },function (msg){
+                expect( msg.payload.schedule.filter( s=>s.returnValue != undefined).length) .toBe(24)
+                resolve();
+              } )
+            });
+          });
     });
   });
-});
