@@ -50,13 +50,13 @@ export class Strategy<Config> {
       });
   }
   protected onInput(msg: MessageType): void {
-    let time = msg.payload.time;
-    if (time == undefined) time = Date.now();
+    let time = Date.now();
+    if (msg.payload && msg.payload.time) time = msg.payload.time;
     let nodes: { name: string; node: any }[] = [];
     this.buildNameList(msg, "", nodes);
     this.inputListeners.forEach((listener) => {
       nodes.forEach((node) => {
-        if (node.name.match(listener.re)) listener.func(msg);
+        if (node.name.match(listener.re)) listener.func(node.node);
       });
     });
     if (time != undefined) this.onTime(time);
@@ -88,27 +88,36 @@ export class Strategy<Config> {
   private overwriteConfigProperties(target: Config, config: any): void {
     if (this.configType.typeFields)
       for (let typeField of this.configType.typeFields) {
-        if (
-          config[typeField] != undefined &&
-          config[typeField + "Type"] != undefined
-        ) {
+        if (config[typeField] != undefined) {
+          if (config[typeField + "Type"] == undefined)
+            config[typeField + "Type"] = this.config[typeField].type;
           let val: { value: any; type: string } = {
-            value: 45,
+            value: undefined,
             type: "num",
           };
-          switch (String(config[typeField + "Type"])) {
-            case "bool":
-              val.value = config[typeField] === "true";
-              break;
-            case "num":
-              val.value = Number(config[typeField]);
-              break;
-            case "json":
-              val.value = JSON.parse(config[typeField]);
-              break;
-            default:
-              break;
-          }
+          
+            switch (String(config[typeField + "Type"])) {
+              case "bool":
+                if (typeof config[typeField] == "string")
+                  val.value = config[typeField] === "true";
+                else
+                  val.value = config[typeField]
+                break;
+              case "num":
+                if (typeof config[typeField] == "string")
+                  val.value = Number(config[typeField]);
+                else
+                  val.value = config[typeField]
+                break;
+              case "json":
+                if (typeof config[typeField] == "string")
+                  val.value = JSON.parse(config[typeField]);
+                else
+                  val.value = config[typeField];
+                break;
+              default:
+                break;
+            }
           val.type = config[typeField + "Type"];
           config[typeField] = val;
           delete (config as any)[typeField + "Type"];

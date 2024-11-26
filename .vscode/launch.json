@@ -8,6 +8,7 @@
         "type": "node",
         "request": "launch",
         "name": "Node Red debuggen",
+        "preLaunchTask": "npm: build",
         "skipFiles": [
             "<node_internals>/**"
         ],

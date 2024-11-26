@@ -14,13 +14,13 @@ interface ItibberPriceInfo {
   startsAt: string;
 }
 abstract class PriceConverter {
-  abstract convert(msg: any): IpriceInfo | undefined;
+  abstract convert(payload: any): IpriceInfo | undefined;
 }
 
 class TibberPriceConverter extends PriceConverter {
-  override convert(msg: any): IpriceInfo | undefined {
-    if (undefined == msg.payload) return undefined;
-    let p = msg.payload;
+  override convert(payload: any): IpriceInfo | undefined {
+    if (undefined == payload) return undefined;
+    let p = payload;
     let pi: { today: ItibberPriceInfo[]; tomorrow: ItibberPriceInfo[] };
     if (
       p.viewer &&
@@ -64,27 +64,26 @@ class NordpoolPriceConverter extends PriceConverter {
       });
     });
   }
-  override convert(msg: any): IpriceInfo | undefined {
+  override convert(dataOrPayload: any): IpriceInfo | undefined {
     let result: PriceData[] = [];
 
-    if (msg.data && msg.data.new_state && msg.data.new_state.attributes)
-      this.copyData(msg.data.new_state.attributes, result);
-    if (msg.payload && msg.payload.attributes)
-      this.copyData(msg.payload.attributes, result);
+    if (
+      dataOrPayload &&
+      dataOrPayload.new_state &&
+      dataOrPayload.new_state.attributes
+    )
+      this.copyData(dataOrPayload.new_state.attributes, result);
+    if (dataOrPayload && dataOrPayload.attributes)
+      this.copyData(dataOrPayload.attributes, result);
 
     if (0 == result.length) return undefined;
     return { source: PriceSources.nordpool, priceDatas: result };
   }
 }
 class OthersPriceConverter extends PriceConverter {
-  override convert(msg: any): IpriceInfo | undefined {
-    if (
-      msg.payload &&
-      msg.payload.length &&
-      msg.payload[0].value &&
-      msg.payload[0].start
-    )
-      return { source: PriceSources.other, priceDatas: msg.payload };
+  override convert(payload: any): IpriceInfo | undefined {
+    if (payload && payload.length && payload[0].value && payload[0].start)
+      return { source: PriceSources.other, priceDatas: payload };
     return undefined;
   }
 }
@@ -95,10 +94,12 @@ let priceConverters: PriceConverter[] = [
   new OthersPriceConverter(),
 ];
 
-export function convertPrice(msg: any): IpriceInfo | undefined {
+export const priceConverterFilterRegexs = [/^payload$/g, /^data$/g];
+
+export function convertPrice(payload: any): IpriceInfo | undefined {
   let rc: IpriceInfo;
   priceConverters.every((pc) => {
-    rc = pc.convert(msg);
+    rc = pc.convert(payload);
     return undefined == rc;
   });
   return rc;
