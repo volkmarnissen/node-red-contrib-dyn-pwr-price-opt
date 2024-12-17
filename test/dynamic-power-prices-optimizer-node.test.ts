@@ -285,7 +285,10 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
           "10",
           function (msg) {
             try {
-              console.log("first entry in schedule: " +JSON.stringify(msg.schedule[0] ,null, "\t"))
+              console.log(
+                "first entry in schedule: " +
+                  JSON.stringify(msg.schedule[0], null, "\t"),
+              );
               expect((msg.payload as any).hotwatertargettemp).toBe(47);
               let count = countTemps(msg.schedule);
               expect(count.find((e) => e.minHour == 10)).toBeDefined();
@@ -312,7 +315,10 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
           "01",
           function (msg) {
             try {
-              console.log("first entry in schedule: " +JSON.stringify(msg.schedule[0] ,null, "\t"))
+              console.log(
+                "first entry in schedule: " +
+                  JSON.stringify(msg.schedule[0], null, "\t"),
+              );
               expect((msg.payload as any).hotwatertargettemp).toBe(48);
               let count = countTemps(msg.schedule);
 
@@ -338,10 +344,13 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
           "07",
           function (msg) {
             try {
-              console.log("first entry in schedule: " +JSON.stringify(msg.schedule[0] ,null, "\t"))
+              console.log(
+                "first entry in schedule: " +
+                  JSON.stringify(msg.schedule[0], null, "\t"),
+              );
               expect((msg.payload as any).hotwatertargettemp).toBe(45);
               let count = countTemps(msg.schedule);
-              let e = count.find((e) => e.temp == 48)
+              let e = count.find((e) => e.temp == 48);
               expect(e).toBeDefined();
               //expect(e!.count ).toBe(5)
               console.log(JSON.stringify(count, null, "\t"));

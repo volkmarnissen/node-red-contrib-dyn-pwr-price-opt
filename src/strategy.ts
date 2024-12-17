@@ -97,8 +97,12 @@ export class Strategy<Config> {
         case "object":
           newValue = JSON.parse(value);
           break;
+
         default:
       }
+
+    if (typeof value == "string" && newValue.length == 0) newValue = undefined;
+
     if (target[field] == undefined)
       Object.defineProperty(target, field, { value: newValue, writable: true });
     else target[field] = newValue;
@@ -116,34 +120,47 @@ export class Strategy<Config> {
           if (config[typeField + "Type"] == undefined)
             config[typeField + "Type"] = this.config[typeField].type;
 
-          if (typeof config[typeField] == "string" && config[typeField] != "")
-            switch (String(config[typeField + "Type"])) {
-              case "bool":
-                if (typeof config[typeField] == "string")
-                  this.setField(
-                    target,
-                    typeField,
-                    config[typeField],
-                    "boolean",
-                  );
-                else
-                  this.setField(target, typeField, config[typeField], "copy");
-                break;
-              case "num":
-                if (typeof config[typeField] == "string")
-                  this.setField(target, typeField, config[typeField], "number");
-                else
-                  this.setField(target, typeField, config[typeField], "copy");
-                break;
-              case "json":
-                if (typeof config[typeField] == "string")
-                  this.setField(target, typeField, config[typeField], "object");
-                else
-                  this.setField(target, typeField, config[typeField], "copy");
-                break;
-              default:
-                break;
-            }
+          if (typeof config[typeField] == "string")
+            if (config[typeField] == "")
+              this.setField(target, typeField, undefined, "copy");
+            else
+              switch (String(config[typeField + "Type"])) {
+                case "bool":
+                  if (typeof config[typeField] == "string")
+                    this.setField(
+                      target,
+                      typeField,
+                      config[typeField],
+                      "boolean",
+                    );
+                  else
+                    this.setField(target, typeField, config[typeField], "copy");
+                  break;
+                case "num":
+                  if (typeof config[typeField] == "string")
+                    this.setField(
+                      target,
+                      typeField,
+                      config[typeField],
+                      "number",
+                    );
+                  else
+                    this.setField(target, typeField, config[typeField], "copy");
+                  break;
+                case "json":
+                  if (typeof config[typeField] == "string")
+                    this.setField(
+                      target,
+                      typeField,
+                      config[typeField],
+                      "object",
+                    );
+                  else
+                    this.setField(target, typeField, config[typeField], "copy");
+                  break;
+                default:
+                  break;
+              }
           delete (target as any)[typeField + "Type"];
         }
       }

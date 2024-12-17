@@ -107,7 +107,8 @@ export default function register(RED: any): any {
 
     private buildSchedule(range: PriceData[], currentHour: number) {
       range.forEach((entry) => {
-        if (entry.start >= currentHour) this.schedule.push(entry);
+        if (entry.start >= currentHour - 60 * 60 * 1000)
+          this.schedule.push(entry);
       });
       // sort by price
       this.schedule.sort((a, b) => a.value - b.value);
@@ -130,7 +131,7 @@ export default function register(RED: any): any {
       if (cheapestHours) {
         this.schedule.forEach((entry, idx) => {
           // entry.rangeId = RangeIds.cheapest ;
-          if( idx < cheapestHours )
+          if (idx < cheapestHours)
             entry.returnValue = this.config.outputValueFirst;
         });
       }
