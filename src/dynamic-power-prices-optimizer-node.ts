@@ -47,7 +47,7 @@ enum RangeIds {
   intermediate2 = 2,
   mostExpensive = 3,
 }
-interface ScheduleEntry extends PriceData {
+export interface ScheduleEntry extends PriceData {
   returnValue?: any;
 }
 const toleranceInMillis = 100;
@@ -69,12 +69,12 @@ export default function register(RED: any): any {
     waitUntilNextHourTimer: any = undefined;
 
     onTime(time: number): void {
-      this.schedule=[]
-        let range = this.getPricesInDateRange(time);
-        if (range) {
-          this.buildSchedule(range);
-        }
-    
+      this.schedule = [];
+      let range = this.getPricesInDateRange(time);
+      if (range) {
+        this.buildSchedule(range, time);
+      }
+
       if (this.schedule.length > 0) {
         this.status.bind(this)({
           fill: "green",
@@ -105,9 +105,9 @@ export default function register(RED: any): any {
         });
     }
 
-    private buildSchedule(range: PriceData[]) {
+    private buildSchedule(range: PriceData[], currentHour: number) {
       range.forEach((entry) => {
-        this.schedule.push(entry);
+        if (entry.start >= currentHour) this.schedule.push(entry);
       });
       // sort by price
       this.schedule.sort((a, b) => a.value - b.value);
@@ -128,13 +128,14 @@ export default function register(RED: any): any {
         else mostExpHours--;
       }
       if (cheapestHours) {
-        this.schedule.every((entry) => {
+        this.schedule.forEach((entry, idx) => {
           // entry.rangeId = RangeIds.cheapest ;
-          entry.returnValue = this.config.outputValueFirst;
-          idx++;
-          return idx < cheapestHours;
+          if( idx < cheapestHours )
+            entry.returnValue = this.config.outputValueFirst;
         });
-      } else rangeValues.push(this.config.outputValueFirst);
+      }
+      if (this.config.outputValueFirst)
+        rangeValues.push(this.config.outputValueFirst);
 
       if (this.config.outputValueSecond != undefined) {
         rangeValues.push(this.config.outputValueSecond);
@@ -148,19 +149,22 @@ export default function register(RED: any): any {
         this.schedule.forEach((entry, idx) => {
           // entry.rangeId = RangeIds.cheapest ;
           if (
-            idx >= this.schedule.length - mostExpHours - 1 &&
+            idx >= this.schedule.length - mostExpHours &&
             entry.returnValue == undefined
           )
             entry.returnValue = this.config.outputValueLast;
         });
-      } else if (this.config.outputValueLast != undefined)
+      }
+      if (this.config.outputValueLast != undefined)
         rangeValues.push(this.config.outputValueLast);
       // divide other ranges in equal pieces
       let rangeSize =
-        (priceRangeSize - cheapestHours - mostExpHours) / rangeValues.length;
-      for (let i = 0; i < priceRangeSize - cheapestHours - mostExpHours; i++) {
-        let rangeIdx = Math.floor(i / rangeSize);
-        this.schedule[cheapestHours + i].returnValue = rangeValues[rangeIdx];
+        (priceRangeSize - cheapestHours - mostExpHours) /
+        (rangeValues.length - (cheapestHours ? 1 : 0) - (mostExpHours ? 1 : 0));
+      for (let i = cheapestHours; i < priceRangeSize - mostExpHours; i++) {
+        let rangeIdx =
+          Math.floor((i - cheapestHours) / rangeSize) + (cheapestHours ? 1 : 0);
+        this.schedule[i].returnValue = rangeValues[rangeIdx];
       }
       //Sort by hour again
       this.schedule.sort((a, b) => a.start - b.start);
@@ -193,7 +197,7 @@ export default function register(RED: any): any {
       if (rc.length == 0) throw new Error("No value found  in schedule");
       if (rc[0].returnValue == undefined)
         throw new Error("No return value found in schedule");
-      return rc[0].returnValue.value;
+      return rc[0].returnValue;
     }
     onFullHour(time: number = Date.now()) {
       try {

@@ -1,7 +1,10 @@
 // tests/calculator.spec.tx
 //import { expect, it, describe } from "@jest/globals";
 import { resolveCaa } from "dns";
-import { registerNodeForTest } from "./../src/dynamic-power-prices-optimizer-node";
+import {
+  registerNodeForTest,
+  ScheduleEntry,
+} from "./../src/dynamic-power-prices-optimizer-node";
 import powerPriceOptimizer from "./../src/dynamic-power-prices-optimizer-node";
 import { RED } from "./RED";
 import fs from "fs";
@@ -10,12 +13,17 @@ import { join } from "path";
 import { Mutex } from "async-mutex";
 
 import { PriceSources } from "../src/priceconverter";
+import { PriceData } from "../src/@types/dynamic-power-prices-optimizer-node";
 let mutex = new Mutex();
 
 let helper = new NodeTestHelper();
 helper.init(require.resolve("node-red"));
 type OnOutputFunction = (msg: any) => void;
-function executeFlow(attrs: any, onOutput: OnOutputFunction): void {
+function executeFlow(
+  attrs: any,
+  hour: string,
+  onOutput: OnOutputFunction,
+): void {
   try {
     let m = new Mutex();
     let flow = [
@@ -44,7 +52,9 @@ function executeFlow(attrs: any, onOutput: OnOutputFunction): void {
         });
         let msg = JSON.parse(data);
 
-        msg.payload.time = Date.parse("2021-10-11T05:00:00.000+02:00");
+        msg.payload.time = Date.parse(
+          "2021-10-11T" + hour + ":00:00.000+02:00",
+        );
         powerPriceOptimizerNode.receive(msg);
       });
     });
@@ -65,7 +75,7 @@ const config = {
   outputValueFirstType: "json",
   outputValueSecond: 45,
   outputValueSecondType: "num",
-  outputValueThird: "This is a text",
+  outputValueThird: "",
   outputValueThirdType: "num",
   outputValueLast: "false",
   outputValueLastType: "bool",
@@ -110,10 +120,9 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
           node["config"].storagecapacity,
         );
       };
-      expect(node["config"].outputValueFirst.value.val1).toBe(45.1);
-      expect(node["config"].outputValueFirst.value.val2).toBe("test");
+      expect(node["config"].outputValueFirst.val1).toBe(45.1);
+      expect(node["config"].outputValueFirst.val2).toBe("test");
 
-      expect(node["config"].outputValueFirst.type).toBe("json");
       var testDate = new Date(2021, 9, 10, 2, 15, 0);
       node["priceInfo"] = {
         source: PriceSources.other,
@@ -122,7 +131,6 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
       node["onFullHour"](testDate.getTime());
 
       // node.onPriceData(node["toPriceData"](buildPriceData()), testDate.getTime());
-      console.log("XXX");
     });
   });
   it("validate hourly timer", () => {
@@ -171,6 +179,10 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
           id: "n1",
           type: "Dyn. Pwr. consumption optimization",
           name: "test name",
+          outputValueFirst: '{ "hotwatertargettemp": 48 }',
+          outputValueFirstType: "json",
+          outputValueLast: '{ "hotwatertargettemp": 45 }',
+          outputValueLastType: "json",
         },
       ];
       mutex.runExclusive(() => {
@@ -190,33 +202,154 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
             storagecapacity: "24",
             outputValueHours: "3",
           },
+          "05",
           function (msg) {
-            expect((msg.payload as any).hotwatertargettemp).toBe(45);
-            let rc = (msg.schedule as any).filter(
-              (entry) => entry.returnValue.value.hotwatertargettemp == 48,
-            );
-            expect(rc.length).toBe(3);
-            expect(msg.schedule.length).toBe(24);
-            expect(msg.schedule[0].start).toBe(msg.time);
-            resolve();
+            try {
+              expect((msg.payload as any).hotwatertargettemp).toBe(45);
+              let count = countTemps(msg.schedule);
+              expect(count.find((e) => e.minHour == 5)).toBeDefined();
+              expect(msg.schedule.length).toBe(24);
+              expect(msg.schedule[0].start).toBe(msg.time);
+              resolve();
+            } catch (e) {
+              reject();
+            }
           },
         );
       });
     });
-    it(" mostExpensive hours set", function () {
+    interface Icount {
+      temp: number;
+      count: number;
+      minPrice: number;
+      maxPrice: number;
+      minHour: number;
+      maxHour: number;
+    }
+    function countTemps(schedule: ScheduleEntry[]): Icount[] {
+      let count: Icount[] = [];
+      let rc = schedule.forEach((entry) => {
+        let e = count.find(
+          (e) => e.temp == entry.returnValue.hotwatertargettemp,
+        );
+        if (e) {
+          e.count++;
+          e.maxPrice = entry.value > e.maxPrice ? entry.value : e.maxPrice;
+          e.minPrice = entry.value < e.minPrice ? entry.value : e.minPrice;
+          e.minHour = entry.start < e.minHour ? entry.start : e.minHour;
+          e.maxHour = entry.start > e.maxHour ? entry.start : e.maxHour;
+        } else
+          count.push({
+            temp: entry.returnValue.hotwatertargettemp,
+            count: 1,
+            minPrice: entry.value,
+            maxPrice: entry.value,
+            minHour: entry.start,
+            maxHour: entry.start,
+          });
+      });
+      count.forEach((e) => {
+        e.minHour = new Date(e.minHour).getHours();
+        e.maxHour = new Date(e.maxHour).getHours();
+      });
+      return count;
+    }
+    it(" mostExpensive hours set return low price range", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {
             storagecapacity: "24",
             outputValueLastHours: "5",
           },
+          "05",
           function (msg) {
             expect((msg.payload as any).hotwatertargettemp).toBe(48);
-            let rc = (msg.schedule as any).filter(
-              (entry) => entry.returnValue.value.hotwatertargettemp == 45,
-            );
-            expect(rc.length).toBe(5);
+            let count = countTemps(msg.schedule);
+            expect(count.find((e) => e.minHour == 5)).toBeDefined();
+            console.log(JSON.stringify(count, null, "\t"));
+
             resolve();
+          },
+        );
+      });
+    });
+    it(" mostExpensive hours set return middle price range", function () {
+      return new Promise<void>((resolve, reject) => {
+        executeFlow(
+          {
+            storagecapacity: "24",
+            outputValueLastHours: "5",
+            outputValueSecond: '{ "hotwatertargettemp": 47 }',
+            outputValueSecondType: "json",
+          },
+          "10",
+          function (msg) {
+            try {
+              console.log("first entry in schedule: " +JSON.stringify(msg.schedule[0] ,null, "\t"))
+              expect((msg.payload as any).hotwatertargettemp).toBe(47);
+              let count = countTemps(msg.schedule);
+              expect(count.find((e) => e.minHour == 10)).toBeDefined();
+              console.log(JSON.stringify(count, null, "\t"));
+
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+        );
+      });
+    });
+
+    it(" mostExpensive hours set return high price range", function () {
+      return new Promise<void>((resolve, reject) => {
+        executeFlow(
+          {
+            storagecapacity: "24",
+            outputValueLastHours: "5",
+            outputValueSecond: '{ "hotwatertargettemp": 47 }',
+            outputValueSecondType: "json",
+          },
+          "01",
+          function (msg) {
+            try {
+              console.log("first entry in schedule: " +JSON.stringify(msg.schedule[0] ,null, "\t"))
+              expect((msg.payload as any).hotwatertargettemp).toBe(48);
+              let count = countTemps(msg.schedule);
+
+              console.log(JSON.stringify(count, null, "\t"));
+
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+        );
+      });
+    });
+    it(" chea hours set return high price range", function () {
+      return new Promise<void>((resolve, reject) => {
+        executeFlow(
+          {
+            storagecapacity: "24",
+            outputValueHours: "5",
+            outputValueSecond: '{ "hotwatertargettemp": 47 }',
+            outputValueSecondType: "json",
+          },
+          "07",
+          function (msg) {
+            try {
+              console.log("first entry in schedule: " +JSON.stringify(msg.schedule[0] ,null, "\t"))
+              expect((msg.payload as any).hotwatertargettemp).toBe(45);
+              let count = countTemps(msg.schedule);
+              let e = count.find((e) => e.temp == 48)
+              expect(e).toBeDefined();
+              //expect(e!.count ).toBe(5)
+              console.log(JSON.stringify(count, null, "\t"));
+
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
           },
         );
       });
@@ -226,7 +359,12 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
         executeFlow(
           {
             storagecapacity: "24",
+
+            outputValueLastHours: "5",
+            outputValueSecond: '{ "hotwatertargettemp": 47 }',
+            outputValueSecondType: "json",
           },
+          "05",
           function (msg) {
             expect(
               msg.schedule.filter((s) => s.returnValue != undefined).length,

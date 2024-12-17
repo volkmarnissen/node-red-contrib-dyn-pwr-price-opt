@@ -84,57 +84,82 @@ export class Strategy<Config> {
 
     return rc;
   }
+  private setField(target: Object, field: string, value: any, type: string) {
+    let newValue = structuredClone(value);
+    if (typeof value == "string")
+      switch (type) {
+        case "number":
+          newValue = Number.parseFloat(value);
+          break;
+        case "boolean":
+          newValue = "true " == value;
+          break;
+        case "object":
+          newValue = JSON.parse(value);
+          break;
+        default:
+      }
+    if (target[field] == undefined)
+      Object.defineProperty(target, field, { value: newValue, writable: true });
+    else target[field] = newValue;
+  }
 
   private overwriteConfigProperties(target: Config, config: any): void {
+    for (let field of Object.keys(config)) {
+      if (config.hasOwnProperty(field))
+        this.setField(target, field, config[field], "copy");
+    }
+
     if (this.configType.typeFields)
       for (let typeField of this.configType.typeFields) {
         if (config[typeField] != undefined) {
           if (config[typeField + "Type"] == undefined)
             config[typeField + "Type"] = this.config[typeField].type;
-          let val: { value: any; type: string } = {
-            value: undefined,
-            type: "num",
-          };
-          
+
+          if (typeof config[typeField] == "string" && config[typeField] != "")
             switch (String(config[typeField + "Type"])) {
               case "bool":
                 if (typeof config[typeField] == "string")
-                  val.value = config[typeField] === "true";
+                  this.setField(
+                    target,
+                    typeField,
+                    config[typeField],
+                    "boolean",
+                  );
                 else
-                  val.value = config[typeField]
+                  this.setField(target, typeField, config[typeField], "copy");
                 break;
               case "num":
                 if (typeof config[typeField] == "string")
-                  val.value = Number(config[typeField]);
+                  this.setField(target, typeField, config[typeField], "number");
                 else
-                  val.value = config[typeField]
+                  this.setField(target, typeField, config[typeField], "copy");
                 break;
               case "json":
                 if (typeof config[typeField] == "string")
-                  val.value = JSON.parse(config[typeField]);
+                  this.setField(target, typeField, config[typeField], "object");
                 else
-                  val.value = config[typeField];
+                  this.setField(target, typeField, config[typeField], "copy");
                 break;
               default:
                 break;
             }
-          val.type = config[typeField + "Type"];
-          config[typeField] = val;
-          delete (config as any)[typeField + "Type"];
+          delete (target as any)[typeField + "Type"];
         }
       }
+
     if (this.configType.numberFields)
       for (let numberField of this.configType.numberFields)
         if (config[numberField] != undefined)
-          config[numberField] = Number.parseFloat(config[numberField]);
+          this.setField(target, numberField, config[numberField], "number");
     if (this.configType.booleanFields)
       for (let booleanField of this.configType.booleanFields)
         if (config[booleanField] != undefined)
-          config[booleanField] = config[booleanField] === "true";
-    for (let field of Object.keys(config)) {
-      if (target[field] == undefined)
-        Object.defineProperty(target, field, { value: config[field] });
-      else target[field] = config[field];
-    }
+          this.setField(
+            target,
+            booleanField,
+            config[booleanField] === "true",
+            "boolean",
+          );
   }
 }
