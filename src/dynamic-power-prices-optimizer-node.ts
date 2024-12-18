@@ -124,9 +124,9 @@ export default function register(RED: any): any {
           ? this.config.storagecapacity
           : range.length;
 
-      while (cheapestHours + mostExpHours > priceRangeSize) {
-        if (cheapestHours > 0 && cheapestHours > mostExpHours) cheapestHours--;
-        else mostExpHours--;
+      if (cheapestHours + mostExpHours > priceRangeSize * 2/3) {
+        cheapestHours  = 0;
+        mostExpHours = 0;
       }
       if (cheapestHours) {
         this.schedule.forEach((entry, idx) => {

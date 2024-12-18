@@ -205,7 +205,7 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
           "05",
           function (msg) {
             try {
-              expect((msg.payload as any).hotwatertargettemp).toBe(45);
+              expect((msg.payload as any).hotwatertargettemp).toBe(48);
               let count = countTemps(msg.schedule);
               expect(count.find((e) => e.minHour == 5)).toBeDefined();
               expect(msg.schedule.length).toBe(24);
