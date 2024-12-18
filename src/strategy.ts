@@ -25,7 +25,12 @@ export class Strategy<Config> {
     this.RED = RED;
     RED.nodes.createNode(this, config);
     if (this.config == undefined) this.config = config;
-    this.overwriteConfigProperties(this.config, config);
+    try{
+      this.overwriteConfigProperties(this.config, config);
+  
+    }catch (e){
+      console.log(e.message)
+    }
     this.on("input", this.onInput.bind(this));
     this.on("close", this.onClose.bind(this));
     this.registerInputListener(/^config$/g, this.onConfigLocal.bind(this));
@@ -86,23 +91,25 @@ export class Strategy<Config> {
   }
   private setField(target: Object, field: string, value: any, type: string) {
     let newValue = structuredClone(value);
+    if (typeof value == "string" && newValue.length == 0) 
+      newValue = undefined;
+    else
     if (typeof value == "string")
       switch (type) {
-        case "number":
+        case "num":
           newValue = Number.parseFloat(value);
           break;
-        case "boolean":
+        case "bool":
           newValue = "true " == value;
           break;
-        case "object":
+        case "json":
           newValue = JSON.parse(value);
           break;
 
         default:
       }
 
-    if (typeof value == "string" && newValue.length == 0) newValue = undefined;
-
+   
     if (target[field] == undefined)
       Object.defineProperty(target, field, { value: newValue, writable: true });
     else target[field] = newValue;
@@ -110,58 +117,36 @@ export class Strategy<Config> {
 
   private overwriteConfigProperties(target: Config, config: any): void {
     for (let field of Object.keys(config)) {
-      if (config.hasOwnProperty(field))
-        this.setField(target, field, config[field], "copy");
+      if (config.hasOwnProperty(field)){
+        let fieldType  = config.hasOwnProperty(field + "Type")? config[field + "Type"]:target.hasOwnProperty(field + "Type")?target[field + "Type"]:"copy"
+        this.setField(target, field, config[field], fieldType);
+
+      }
+
+      
     }
 
     if (this.configType.typeFields)
       for (let typeField of this.configType.typeFields) {
-        if (config[typeField] != undefined) {
+        if (! typeField.endsWith("Type") && config[typeField] != undefined ) {
           if (config[typeField + "Type"] == undefined)
             config[typeField + "Type"] = this.config[typeField].type;
 
-          if (typeof config[typeField] == "string")
+          if (typeof config[typeField] != "string")
+            this.setField(target, typeField, config[typeField], "copy");
+          else
             if (config[typeField] == "")
               this.setField(target, typeField, undefined, "copy");
             else
-              switch (String(config[typeField + "Type"])) {
-                case "bool":
-                  if (typeof config[typeField] == "string")
-                    this.setField(
+              if( ["num", "bool", "json"].includes(String(config[typeField + "Type"])) )
+                   this.setField(
                       target,
                       typeField,
                       config[typeField],
-                      "boolean",
-                    );
-                  else
-                    this.setField(target, typeField, config[typeField], "copy");
-                  break;
-                case "num":
-                  if (typeof config[typeField] == "string")
-                    this.setField(
-                      target,
-                      typeField,
-                      config[typeField],
-                      "number",
-                    );
-                  else
-                    this.setField(target, typeField, config[typeField], "copy");
-                  break;
-                case "json":
-                  if (typeof config[typeField] == "string")
-                    this.setField(
-                      target,
-                      typeField,
-                      config[typeField],
-                      "object",
-                    );
-                  else
-                    this.setField(target, typeField, config[typeField], "copy");
-                  break;
-                default:
-                  break;
-              }
-          delete (target as any)[typeField + "Type"];
+                      config[typeField + "Type"],
+                    )
+              else 
+                this.setField(target, typeField, config[typeField], "copy");
         }
       }
 

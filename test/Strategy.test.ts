@@ -28,14 +28,12 @@ describe("Strategy Tests", () => {
     expect(typeof s["config"].num).toBe("number");
     expect(typeof s["config"].json).toBe("object");
     expect(s["config"].tf).toBe(45);
-    expect(s["config"].tfType).not.toBeDefined();
-    let target = structuredClone(s["config"]);
-    let newTarget = {};
+    let newTarget = {num: 47};
 
-    s["overwriteConfigProperties"](newTarget, target);
+    s["onConfigLocal"](newTarget);
     expect(typeof s["config"].num).toBe("number");
     expect(typeof s["config"].json).toBe("object");
     expect(s["config"].tf).toBe(45);
-    expect(s["config"].tfType).not.toBeDefined();
+    expect(s["config"].num).toBe(47);
   });
 });
