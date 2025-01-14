@@ -1,12 +1,12 @@
 // tests/calculator.spec.tx
 //import { expect, it, describe } from "@jest/globals";
-import { Strategy } from "./../src/strategy";
-import { TypeDescription } from "../src/@types/dynamic-power-prices-optimizer-node";
+import { BaseNode } from "./../src/basenode";
+import { TypeDescription } from "./../src/@types/basenode";
 import { RED } from "./RED";
 const tTest: TypeDescription = {};
 describe("Strategy Tests", () => {
   it("toConfig", () => {
-    let s = new Strategy<any>(
+    let s = new BaseNode<any>(
       {
         num: "45",
         numType: "num",
@@ -19,9 +19,9 @@ describe("Strategy Tests", () => {
         json: '{ "name": "test" }',
       },
       {
-        numberFields: ["num"],
-        booleanFields: ["boo"],
-        typeFields: ["tf", "json"],
+        numberFields: [{name: "num", required:false}],
+        booleanFields: [{name: "boo", required:false}],
+        typeFields: [{name: "tf", required:false}, {name: "json", required:false}],
       },
       RED,
     );

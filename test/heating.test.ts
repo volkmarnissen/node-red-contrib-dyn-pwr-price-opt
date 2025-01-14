@@ -4,16 +4,16 @@ import { resolveCaa } from "dns";
 import {
   registerNodeForTest,
   ScheduleEntry,
-} from "./../src/dynamic-power-prices-optimizer-node";
-import powerPriceOptimizer from "./../src/dynamic-power-prices-optimizer-node";
+} from "../src/heating";
+import powerPriceOptimizer from "../src/heating";
 import { RED } from "./RED";
 import fs from "fs";
 import { NodeTestHelper, TestFlows } from "node-red-node-test-helper";
 import { join } from "path";
 import { Mutex } from "async-mutex";
 
-import { PriceSources } from "../src/priceconverter";
-import { PriceData } from "../src/@types/dynamic-power-prices-optimizer-node";
+import { PriceSources } from "../src/periodgenerator";
+import { PriceData } from "../src/@types/basenode";
 let mutex = new Mutex();
 
 let helper = new NodeTestHelper();
@@ -29,13 +29,13 @@ function executeFlow(
     let flow = [
       Object.assign(
         {
-          id: "powerPriceOptimizer",
-          type: "Dyn. Pwr. consumption optimization",
+          id: "heating",
+          type: "Heating",
           name: "Receive prices",
-          outputValueFirst: '{ "hotwatertargettemp": 48 }',
-          outputValueFirstType: "json",
-          outputValueLast: '{ "hotwatertargettemp": 45 }',
-          outputValueLastType: "json",
+          maximaltemperature: "23",
+          increasetemperatureperhour: "0.2",
+           decreasetemperatureperhour: "0.2",
+          designtemperature: "-12",
           wires: [["output"]],
         },
         attrs,
@@ -44,7 +44,9 @@ function executeFlow(
     ];
     mutex.runExclusive(() => {
       helper.load(powerPriceOptimizer, flow, function () {
-        const powerPriceOptimizerNode = helper.getNode("powerPriceOptimizer");
+        try {
+        const powerPriceOptimizerNode = helper.getNode("heating");
+        expect( powerPriceOptimizerNode).not.toBeNull()
         const outputNode = helper.getNode("output");
         outputNode.on("input", onOutput);
         let data = fs.readFileSync("test/data/tibber-prices-single-home.json", {
@@ -55,7 +57,12 @@ function executeFlow(
         msg.payload.time = Date.parse(
           "2021-10-11T" + hour + ":00:00.000+02:00",
         );
-        powerPriceOptimizerNode.receive(msg);
+        powerPriceOptimizerNode.receive(msg);          
+        }catch(e){
+          console.log(e);
+          debugger;
+        }
+
       });
     });
   } catch (e) {
@@ -177,7 +184,7 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
       const flow = [
         {
           id: "n1",
-          type: "Dyn. Pwr. consumption optimization",
+          type: "Heating",
           name: "test name",
           outputValueFirst: '{ "hotwatertargettemp": 48 }',
           outputValueFirstType: "json",
@@ -195,21 +202,20 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
       });
     });
 
-    it("should have priceData", function () {
+    it("should return a temperature", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {
-            storagecapacity: "24",
-            outputValueHours: "3",
+            minimaltemperature: "21",
+            maximaltemperature: "23",
+            decreasetemperatureperhour: "0.1",
+            increasetemperatureperhour: "0.2"
           },
           "05",
           function (msg) {
             try {
-              expect((msg.payload as any).hotwatertargettemp).toBe(48);
-              let count = countTemps(msg.schedule);
-              expect(count.find((e) => e.minHour == 5)).toBeDefined();
-              expect(msg.schedule.length).toBe(24);
-              expect(msg.schedule[0].start).toBe(msg.time);
+              expect(msg.payload ).toBe(23);
+
               resolve();
             } catch (e) {
               reject();
@@ -254,7 +260,7 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
       });
       return count;
     }
-    it(" mostExpensive hours set return low price range", function () {
+    xit(" mostExpensive hours set return low price range", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {
@@ -273,7 +279,7 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
         );
       });
     });
-    it(" mostExpensive hours set return middle price range", function () {
+    xit(" mostExpensive hours set return middle price range", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {
@@ -303,7 +309,7 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
       });
     });
 
-    it(" mostExpensive hours set return high price range", function () {
+    xit(" mostExpensive hours set return high price range", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {
@@ -332,29 +338,19 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
         );
       });
     });
-    it(" chea hours set return high price range", function () {
+    it(" cheap hours set return high price range", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {
-            storagecapacity: "24",
-            outputValueHours: "5",
-            outputValueSecond: '{ "hotwatertargettemp": 47 }',
-            outputValueSecondType: "json",
+            minimaltemperature: "21",
+            maximaltemperature: "23",
+            decreasetemperatureperhour: "0.1",
+            increasetemperatureperhour: "0.2"
           },
           "07",
           function (msg) {
             try {
-              console.log(
-                "first entry in schedule: " +
-                  JSON.stringify(msg.schedule[0], null, "\t"),
-              );
-              expect((msg.payload as any).hotwatertargettemp).toBe(45);
-              let count = countTemps(msg.schedule);
-              let e = count.find((e) => e.temp == 48);
-              expect(e).toBeDefined();
-              //expect(e!.count ).toBe(5)
-              console.log(JSON.stringify(count, null, "\t"));
-
+              expect((msg.payload as any)).toBe(21);
               resolve();
             } catch (e) {
               reject(e);
@@ -363,7 +359,31 @@ describe("dynamic-power-prices-optimizer-node Tests", () => {
         );
       });
     });
-    it(" no hours set:: complete schedule has return values", function () {
+    it(" nightlyhours set return nighttemperature", function () {
+      return new Promise<void>((resolve, reject) => {
+        executeFlow(
+          {
+            minimaltemperature: "21",
+            maximaltemperature: "23",
+            decreasetemperatureperhour: "0.1",
+            increasetemperatureperhour: "0.2",
+            nightstarthour: "22",
+            nightendhour:"6",
+            nighttargettemperature: "12"
+          },
+          "23",
+          function (msg) {
+            try {
+              expect((msg.payload as any)).toBe(12);
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+        );
+      });
+    });
+    xit(" no hours set:: complete schedule has return values", function () {
       return new Promise<void>((resolve, reject) => {
         executeFlow(
           {

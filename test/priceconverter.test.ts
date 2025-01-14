@@ -3,7 +3,7 @@ import {
   convertPrice,
   IpriceInfo,
   PriceSources,
-} from "./../src/priceconverter";
+} from "./../src/periodgenerator";
 import { join } from "path";
 describe("PriceConverter Tests", () => {
   it("convertPrice", () => {
@@ -23,7 +23,7 @@ describe("PriceConverter Tests", () => {
       let data = fs.readFileSync(join("test/data", f.filename), {
         encoding: "utf-8",
       });
-      let priceInfo: IpriceInfo | undefined = convertPrice(JSON.parse(data));
+      let priceInfo: IpriceInfo | undefined = convertPrice(1,JSON.parse(data));
 
       //expect(priceInfo!.source).toBe(f.source)
     });

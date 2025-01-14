@@ -1,0 +1,148 @@
+<script
+  type="text/javascript"
+  src="resources/node-red-contrib-dyn-pwr-price-opt/heating.js"
+></script>
+
+<script
+  type="text/html"
+  data-template-name="Heating"
+>
+  <div class="form-row">
+      <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name" style="width: 240px">
+  </div>
+  <hr/>
+  <h2>Period</h2>
+    <div class="form-row">
+      <label for="node-input-periodlength" style="text-indent: -8px;"><i class="fa fa-clock-o"></i> Length of one Period</label>
+      <select  id="node-input-periodlength" style="width: 100px">
+        <option value="1">1</option><option value="0.5">1/2 h</option><option value="0.25">1/4 h</option>
+      </select>
+    </div>
+    <hr/>
+    <h2>Setback at night</h2>
+  <div class="form-row">
+      <label for="node-input-nightstarthour" style="text-indent: -8px;"><i class="fa fa-clock-o"></i> Active during <br/>[h of day]:</label>
+      <select  id="node-input-nightstarthour" style="width: 100px">
+        <option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option>
+        <option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7">07:00</option>
+        <option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option>
+        <option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option>
+        <option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option>
+        <option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option>
+      </select>
+      <label for="node-input-nightendhour" style="width: 10px">-</label>
+      <select  id="node-input-nightendhour" style="width: 80px"/>
+        <option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option>
+        <option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7">07:00</option>
+        <option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option>
+        <option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option>
+        <option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option>
+        <option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option>
+       </select>
+    </div>
+    <div class="form-row">
+      <label for="node-input-nighttargettemperature" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>Set  Temp.</label>
+      <input type="number" id="node-input-nighttargettemperature" style="width: 100px">
+    </div>
+    <p>Set point  temperature at night</p>
+    <hr/>
+    <h2 class="divOutputValues">Room Temperature Range</h2>
+    <div class="form-row">
+      <label for="node-input-minimaltemperature" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Minimal:</label>
+      <input type="number" id="node-input-minimaltemperature" style="width: 100px">
+      <label for="node-input-maximaltemperature" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Maximal:</label>
+      <input type="number" id="node-input-maximaltemperature" style="width: 100px">
+    </div>
+    <p> Temperature range of set point temperature</p>
+    <h2 class="divOutputValues">Cool Down and Heat Up Parameters</h2>
+    <div class="form-row">
+      <label for="node-input-designtemperature" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i>Designtemp.:</label>
+      <input type="number" id="node-input-designtemperature"  step="1" min="-20" max="0"  style="width: 100px">
+    </div>
+    <p> Minimal outer temperature the heating device can heat up to 21°C</p>
+    <div class="form-row">
+      <label for="node-input-decreasetemperatureperhour" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Cool Down Temp[1°/h]</label>
+      <input type="number" id="node-input-decreasetemperatureperhour" step="0.1" min="0" max="2" style="width: 100px">
+    </div>
+    <p>Room temperature reduction per hour at Designtemperature (outer temperature)</p>
+    <div class="form-row">
+      <label for="node-input-increasetemperatureperhour" style="text-indent: -8px;"><i class="fa fa-arrows-h"></i> Heat up temp.</label>
+      <input type="number" id="node-input-increasetemperatureperhour" step="0.1"  min="0" max="2"   style="width: 100px">
+    </div>
+    <p>Temperature increase per hour when heating is on</p>
+</script>
+<script type="text/html" data-help-name="Heating">
+  <p>This node Takes the current temperatures and parameters to calculate a prognosis of the energy consumption of the next hours. 
+    Based on that it adjusts the setpoint to a higher value if energy is cheap compared to later periods</p>
+  <p>The set point will be sent as the payload in the output message.
+    if the current period is cheap, the Heating will start heating up to a maximal temperature.
+    Otherwise will start heating only if the current temperature is even below a the minimal temperature setpoint.
+    </p>
+
+     <h3>Inputs</h3>
+    <p>The input data must have a payload element (<b>msg.payload</b>). It can have the following optional structure:</p>
+    <ol type="1">
+      <ol>
+      <li><b>Price data from electric power supplier</b><br/>
+            <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>) node <br/>
+            Example: The payload of tibber price data<br/>
+                <dl class="message-properties">
+                  <dt>viewer.homes[0].currentSubscription.priceInfo.today| tomorrow
+                    <span class="property-type">[{&quot;total&quot;:number, &quot;startsAt&quot;: string }]</span>
+                </dt>
+                <dd> Array of price data<br/>
+                Example: { "total": 0.2494, "startsAt": "2021-10-11T00:00:00.000+02:00" } </dd>
+                </dl>
+           </li>
+    </ol>
+      <li><b>Data from the Heating Device</b><br/>
+                Every configuration parameter can be changed at runtime by sending it within the config element.<br/>
+                The following example shows a complete config input. All elements are optional:<br/>
+                <dl class="message-properties">
+                  <dt>payload.outertemperature
+                    <span class="property-type">"num"</span>
+                </dt>
+                  <dd> Output Value of cheapest price group</dd>
+                </dl>
+                <dl class="message-properties">
+                  <dt class="optional">payload.roomtemperature
+                    <span class="property-type">"num" as string </span>
+                  </dt>
+                  <dd>Output Value of second price group</dd>
+                </dl>
+       <li><b>Time</b><br/>
+            This will trigger the output. The inject node can be used to send the time.<br/>
+            This input is optional. The node sends outputs every period (when the price has changed)
+            <dl class="message-properties">
+              <dt class="optional">time
+                <span class="property-type">"num" as string </span>
+              </dt>
+              <dd>Output Value of second price group</dd>
+            </dl>
+        </li>
+    </ol>
+
+      <h3>Outputs</h3>
+      <p>The output contains a msg.payload element containing the setpoint for the current state</p>
+      <ol type="1">
+          <li><b>value</b>:<br/>The node generates a schedule from the price data.<br/>
+              Depending on the price for the current hour, the node will assign one of the configured groups.<br/> The node calculates the group for the current time and sends the groups output value to this element<br/>
+              This element can be used to control attached devices via MQTT or other interfaces</li>
+  
+      </ol>
+
+      <h3>Details</h3>
+
+      <p>A typical use case for this node is optimization of power consumption for heating a room or a house using an electrical heat pump.</p>
+
+      <p>The output of each range will set the set point the given price state the heat pump.<br/>
+      If the electric power is cheap, the setpoint is the configured maximum temperature. It's more likely that the heatpump starts heating.
+      Otherwise and the heat pump will start hot water generation also if the tank temperature is higher.<br/>
+      If the price is high, the setpoint is the minimum temperature. The heatpump will start only if it's below this temperature<br/>
+      The "Cool Down Temperature difference per hour" will be used to estimate the time until heating needs to be started because of the temperature is lower than setpoint.
+      A high outertemperature will increase this time period. 
+      The "Heat up temperature difference per hour" will be used to estimate the required run time of the heating.
+      </p>
+
+</script>

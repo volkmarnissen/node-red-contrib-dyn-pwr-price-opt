@@ -1,24 +1,31 @@
-import { PriceData } from "./@types/dynamic-power-prices-optimizer-node";
+import { PriceData } from "./@types/basenode";
 
 export enum PriceSources {
   tibber = "tibber",
   nordpool = "nordpool",
   other = "other",
 }
-export interface IpriceInfo {
+interface IpriceInfoSource {
   source: PriceSources;
   priceDatas: PriceData[];
+}
+export interface IpriceInfo extends IpriceInfoSource{
+  prices:{
+    starttime:number,
+    endtime:number,
+    periodlength:number
+  }
 }
 interface ItibberPriceInfo {
   total: number;
   startsAt: string;
 }
 abstract class PriceConverter {
-  abstract convert(payload: any): IpriceInfo | undefined;
+  abstract convert(payload: any): IpriceInfoSource | undefined;
 }
 
 class TibberPriceConverter extends PriceConverter {
-  override convert(payload: any): IpriceInfo | undefined {
+  override convert(payload: any): IpriceInfoSource | undefined {
     if (undefined == payload) return undefined;
     let p = payload;
     let pi: { today: ItibberPriceInfo[]; tomorrow: ItibberPriceInfo[] };
@@ -64,7 +71,7 @@ class NordpoolPriceConverter extends PriceConverter {
       });
     });
   }
-  override convert(dataOrPayload: any): IpriceInfo | undefined {
+  override convert(dataOrPayload: any): IpriceInfoSource | undefined {
     let result: PriceData[] = [];
 
     if (
@@ -81,7 +88,7 @@ class NordpoolPriceConverter extends PriceConverter {
   }
 }
 class OthersPriceConverter extends PriceConverter {
-  override convert(payload: any): IpriceInfo | undefined {
+  override convert(payload: any): IpriceInfoSource | undefined {
     if (payload && payload.length && payload[0].value && payload[0].start)
       return { source: PriceSources.other, priceDatas: payload };
     return undefined;
@@ -96,10 +103,34 @@ let priceConverters: PriceConverter[] = [
 
 export const priceConverterFilterRegexs = [/^payload$/g, /^data$/g];
 
-export function convertPrice(payload: any): IpriceInfo | undefined {
-  let rc: IpriceInfo;
+export function convertPrice(periodlength:number, payload: any): IpriceInfo | undefined {
+  let rc: IpriceInfo = undefined ;
+  let periodsperhour = Math.round( 1 / periodlength)
   priceConverters.every((pc) => {
-    rc = pc.convert(payload);
+    let src = pc.convert(payload);
+    let additionalPeriods:PriceData[] = []
+    if( rc && periodsperhour != 1 )
+      rc.priceDatas.forEach(pd=>{
+        let dt = new Date(pd.start)
+        if( periodsperhour >= 2)
+          additionalPeriods.push( { start: dt.setHours( dt.getMinutes() + 30 ), value: pd.value })
+        if( periodsperhour >= 4){
+          additionalPeriods.push( { start: dt.setHours( dt.getMinutes() + 15 ), value: pd.value })
+          additionalPeriods.push( { start: dt.setHours( dt.getMinutes() + 45 ), value: pd.value })
+        }
+      })
+
+      if( additionalPeriods.length > 0){
+        src.priceDatas = src.priceDatas.concat(additionalPeriods)
+        src.priceDatas.sort((a, b) => a.start - b.start)
+      }
+      if(src )
+        rc = {...src, prices:{
+          starttime:src.priceDatas[0].start,
+          endtime:src.priceDatas[src.priceDatas.length-1].start,
+          periodlength:periodlength
+          }
+        }
     return undefined == rc;
   });
   return rc;

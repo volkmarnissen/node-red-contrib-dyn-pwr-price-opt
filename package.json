@@ -1,7 +1,6 @@
 {
   "name": "node-red-contrib-dyn-pwr-price-opt",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "test": "jest",
@@ -13,7 +12,7 @@
   "license": "ISC",
   "node-red": {
     "nodes": {
-      "Dyn. Pwr. consumption optimization": "./dist/dynamic-power-prices-optimizer-node.js"
+      "Heating": "./dist/heating.js"
     }
   },
   "description": "",

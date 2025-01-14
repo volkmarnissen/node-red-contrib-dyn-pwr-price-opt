@@ -43,63 +43,66 @@ function generateOutputValues() {
   // generateOutputValueTypedInput("NoPrices", "bool")
 }
 
-RED.nodes.registerType("Dyn. Pwr. consumption optimization", {
-  category: "Power Saver",
+RED.nodes.registerType("Heating", {
+  category: "Dynamic Prices Energy Saver",
   color: "#a6bbcf",
   defaults: {
-    name: { value: "Dyn. Pwr. consumption optimization" },
-    storagecapacity: {
-      value: 24,
+    name: { value: "Heating" },
+    periodlength: {
+      value: 1,
       required: true,
     },
-    fromTime: { value: 1 },
-    toTime: { value: 3 },
-
-    outputValueFirst: { value: "test" },
-    outputValueFirstType: { value: "str", required: true },
+    nightstarthour: { required: false },
+    nightendhour: { required: false },
+    nighttargettemperature: { required: false },
+    minimaltemperature: {
+      value: 21,
+      required: true
+    },
+    maximaltemperature: {
+      value: 23,
+      required: true
+    },
+    increasetemperatureperhour: {
+      value: 0.2,
+      required: true
+    },
+    decreasetemperatureperhour: {
+      value: 0.2,
+      required: true
+    },
+    designtemperature: {
+      value: -12,
+      required: true
+    },
+    cheapestpriceoutput: { 
+      validate: RED.validators.typedInput("cheapestpriceoutputType", false), 
+    },
+    cheapestpriceoutputType: { required: false },
     outputValueSecond: {
-      value: 45,
       required: false,
       validate: RED.validators.typedInput("outputValueSecondType", false),
     },
-    outputValueSecondType: { value: "num", required: true },
+    outputValueSecondType: {  required: false },
     outputValueThird: {
       required: false,
       validate: RED.validators.typedInput("outputValueThirdType", false),
     },
-    outputValueThirdType: { value: "num", required: true },
-    outputValueLast: {
-      value: false,
-      required: true,
-      validate: RED.validators.typedInput("outputValueLastType", false),
+    outputValueThirdType: {  required: false },
+
+    highestpriceoutput: {
+      required: false,
+      validate: RED.validators.typedInput("highestpriceoutputType", false),
     },
-    outputValueLastType: { value: "bool", required: true },
-    outputValueLastHours: {
-      value: 1,
-      required: true,
-    },
+    highestpriceoutputType: { required: false },
   },
   inputs: 1,
   outputs: 1,
   icon: "font-awesome/fa-bar-chart",
   color: "#FFCC66",
   label: function () {
-    return this.name || "Price Ranges";
+    return this.name || "Heating";
   },
   outputLabels: ["on", "off", "schedule"],
-  oneditprepare: function () {
-    $("#node-input-outputOutsidePeriod").typedInput({
-      types: [
-        {
-          value: "onoff",
-          options: [
-            { value: "true", label: "On" },
-            { value: "false", label: "Off" },
-          ],
-        },
-      ],
-    });
-    generateOutputValues();
-  },
   oneditsave: function () {},
 });
