@@ -44,6 +44,11 @@ export class EnergyConsumption{
     }
     private buildSchedule( currentTime: number) {
       let range:PriceData[] = this.getPricesInDateRange(currentTime)
+      if(  range == undefined || range.length==0 ){
+        this.schedule.forEach(s=>{s.returnValue = undefined})
+        return
+      }
+        
       range.forEach((entry) => {
           this.schedule.push(entry);
       });
@@ -112,7 +117,7 @@ export class EnergyConsumption{
    private getPricesInDateRange(startTime: number): PriceData[] {
         // Make sure, that time is in Range
         let t = this.getStartTime( startTime)
-        if (!this.config.priceInfo || !this.config.priceInfo.priceDatas) return undefined;
+        if (!this.config.priceInfo || !this.config.priceInfo.priceDatas|| !this.config.estimconsumptionperiods) return undefined;
         return this.config.priceInfo.priceDatas.filter(
           (data) =>
             data.start >= t && data.start < t + this.getStorygeCapacityDuration(),
@@ -126,9 +131,13 @@ export class EnergyConsumption{
         let rc = this.schedule.filter(
           (entry) => entry.start <= time && time < entry.start + 60 * 60 * this.config.priceInfo.prices.periodlength * 1000,
         );
-        if (rc.length > 1)
+        if (rc && rc.length > 1)
           throw new Error("More than one value found  in schedule");
-        if (rc.length == 0) throw new Error("No value found  in schedule");
+        if( !rc || rc.length == 0)
+          return this.config.highestpriceoutput // no heating
+        if (!this.schedule || this.schedule.length == 0)
+          return undefined
+
         if (rc[0].returnValue == undefined)
           throw new Error("No return value found in schedule");
         return rc[0].returnValue;

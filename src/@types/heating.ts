@@ -1,16 +1,5 @@
-import { ScheduleEntryType } from "./basenode";
+import { HotwaterConfig } from "./hotwater";
 
-export interface HeatingConfig {
-  schedule: Array<ScheduleEntryType>;
-  name: string;
-  tolerance?: number;
-  periodlength:number;
-  nightstarthour:number;
-  nightendhour:number;
-  nighttargettemperature:number;
-  minimaltemperature:number,
-  maximaltemperature:number,
-  increasetemperatureperhour:number,
-  decreasetemperatureperhour:number,
+export interface HeatingConfig extends HotwaterConfig{
   designtemperature?:number;
 }

@@ -12,7 +12,9 @@
   "license": "ISC",
   "node-red": {
     "nodes": {
-      "Heating": "./dist/heating.js"
+      "Heating": "./dist/heating.js",
+      "Hotwater": "./dist/hotwater.js"
+ 
     }
   },
   "description": "",

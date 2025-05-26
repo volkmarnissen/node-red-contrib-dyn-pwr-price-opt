@@ -65,7 +65,7 @@ export class BaseNode<Config> {
       let handled = false;
     this.inputListeners.forEach((listener) => {
       nodes.forEach((node) => {
-        if (!handled && node.name.match(listener.re)) handled = handled || listener.func(node.node);
+        if (node.name.match(listener.re)) handled = handled || listener.func(node.node);
       });
     });
     if (time != undefined) this.onTime(time);      
