@@ -1,5 +1,3 @@
-
-
 RED.nodes.registerType("Hotwater", {
   category: "Dynamic Prices Energy Saver",
   color: "#a6bbcf",
@@ -14,27 +12,28 @@ RED.nodes.registerType("Hotwater", {
     nighttargettemperature: { required: false },
     minimaltemperature: {
       value: 45,
-      required: true
+      required: true,
     },
     maximaltemperature: {
       value: 60,
-      required: true
+      required: true,
     },
     increasetemperatureperhour: {
       value: 3,
-      required: true
+      required: true,
     },
     decreasetemperatureperhour: {
       value: 0.3,
-      required: true
+      required: true,
     },
-  inputs: 1,
-  outputs: 1,
-  icon: "font-awesome/fa-bar-chart",
-  color: "#FFCC66",
-  label: function () {
-    return this.name || "Hotwater";
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-bar-chart",
+    color: "#FFCC66",
+    label: function () {
+      return this.name || "Hotwater";
+    },
+    outputLabels: ["on", "off", "schedule"],
+    oneditsave: function () {},
   },
-  outputLabels: ["on", "off", "schedule"],
-  oneditsave: function () {},
-}});
+});

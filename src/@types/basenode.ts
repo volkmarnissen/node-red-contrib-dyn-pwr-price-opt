@@ -1,5 +1,3 @@
-
-
 export interface ScheduleEntryType {
   time: number;
   value: ValueType;
@@ -28,9 +26,9 @@ export interface PlanType {
   source: string;
 }
 
-export interface IfieldDescription{
-  name:string,
-  required:boolean
+export interface IfieldDescription {
+  name: string;
+  required: boolean;
 }
 
 export interface TypeDescription {

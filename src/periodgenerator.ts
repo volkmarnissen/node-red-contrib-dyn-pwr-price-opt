@@ -9,12 +9,12 @@ interface IpriceInfoSource {
   source: PriceSources;
   priceDatas: PriceData[];
 }
-export interface IpriceInfo extends IpriceInfoSource{
-  prices:{
-    starttime:number,
-    endtime:number,
-    periodlength:number
-  }
+export interface IpriceInfo extends IpriceInfoSource {
+  prices: {
+    starttime: number;
+    endtime: number;
+    periodlength: number;
+  };
 }
 interface ItibberPriceInfo {
   total: number;
@@ -103,34 +103,48 @@ let priceConverters: PriceConverter[] = [
 
 export const priceConverterFilterRegexs = [/^payload$/g, /^data$/g];
 
-export function convertPrice(periodlength:number, payload: any): IpriceInfo | undefined {
-  let rc: IpriceInfo = undefined ;
-  let periodsperhour = Math.round( 1 / periodlength)
+export function convertPrice(
+  periodlength: number,
+  payload: any,
+): IpriceInfo | undefined {
+  let rc: IpriceInfo = undefined;
+  let periodsperhour = Math.round(1 / periodlength);
   priceConverters.every((pc) => {
     let src = pc.convert(payload);
-    let additionalPeriods:PriceData[] = []
-    if( rc && periodsperhour != 1 )
-      rc.priceDatas.forEach(pd=>{
-        let dt = new Date(pd.start)
-        if( periodsperhour >= 2)
-          additionalPeriods.push( { start: dt.setHours( dt.getMinutes() + 30 ), value: pd.value })
-        if( periodsperhour >= 4){
-          additionalPeriods.push( { start: dt.setHours( dt.getMinutes() + 15 ), value: pd.value })
-          additionalPeriods.push( { start: dt.setHours( dt.getMinutes() + 45 ), value: pd.value })
+    let additionalPeriods: PriceData[] = [];
+    if (rc && periodsperhour != 1)
+      rc.priceDatas.forEach((pd) => {
+        let dt = new Date(pd.start);
+        if (periodsperhour >= 2)
+          additionalPeriods.push({
+            start: dt.setHours(dt.getMinutes() + 30),
+            value: pd.value,
+          });
+        if (periodsperhour >= 4) {
+          additionalPeriods.push({
+            start: dt.setHours(dt.getMinutes() + 15),
+            value: pd.value,
+          });
+          additionalPeriods.push({
+            start: dt.setHours(dt.getMinutes() + 45),
+            value: pd.value,
+          });
         }
-      })
+      });
 
-      if( additionalPeriods.length > 0){
-        src.priceDatas = src.priceDatas.concat(additionalPeriods)
-        src.priceDatas.sort((a, b) => a.start - b.start)
-      }
-      if(src )
-        rc = {...src, prices:{
-          starttime:src.priceDatas[0].start,
-          endtime:src.priceDatas[src.priceDatas.length-1].start,
-          periodlength:periodlength
-          }
-        }
+    if (additionalPeriods.length > 0) {
+      src.priceDatas = src.priceDatas.concat(additionalPeriods);
+      src.priceDatas.sort((a, b) => a.start - b.start);
+    }
+    if (src)
+      rc = {
+        ...src,
+        prices: {
+          starttime: src.priceDatas[0].start,
+          endtime: src.priceDatas[src.priceDatas.length - 1].start,
+          periodlength: periodlength,
+        },
+      };
     return undefined == rc;
   });
   return rc;

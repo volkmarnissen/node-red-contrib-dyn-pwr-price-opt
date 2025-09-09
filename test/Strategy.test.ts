@@ -19,16 +19,19 @@ describe("Strategy Tests", () => {
         json: '{ "name": "test" }',
       },
       {
-        numberFields: [{name: "num", required:false}],
-        booleanFields: [{name: "boo", required:false}],
-        typeFields: [{name: "tf", required:false}, {name: "json", required:false}],
+        numberFields: [{ name: "num", required: false }],
+        booleanFields: [{ name: "boo", required: false }],
+        typeFields: [
+          { name: "tf", required: false },
+          { name: "json", required: false },
+        ],
       },
       RED,
     );
     expect(typeof s["config"].num).toBe("number");
     expect(typeof s["config"].json).toBe("object");
     expect(s["config"].tf).toBe(45);
-    let newTarget = {num: 47};
+    let newTarget = { num: 47 };
 
     s["onConfigLocal"](newTarget);
     expect(typeof s["config"].num).toBe("number");

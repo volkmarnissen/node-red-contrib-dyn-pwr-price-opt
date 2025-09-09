@@ -1,5 +1,3 @@
-
-
 RED.nodes.registerType("Heating", {
   category: "Dynamic Prices Energy Saver",
   color: "#a6bbcf",
@@ -14,38 +12,38 @@ RED.nodes.registerType("Heating", {
     nighttargettemperature: { required: false },
     minimaltemperature: {
       value: 21,
-      required: true
+      required: true,
     },
     maximaltemperature: {
       value: 23,
-      required: true
+      required: true,
     },
     increasetemperatureperhour: {
       value: 0.2,
-      required: true
+      required: true,
     },
     decreasetemperatureperhour: {
       value: 0.2,
-      required: true
+      required: true,
     },
     designtemperature: {
       value: -12,
-      required: true
+      required: true,
     },
-    cheapestpriceoutput: { 
-      validate: RED.validators.typedInput("cheapestpriceoutputType", false), 
+    cheapestpriceoutput: {
+      validate: RED.validators.typedInput("cheapestpriceoutputType", false),
     },
     cheapestpriceoutputType: { required: false },
     outputValueSecond: {
       required: false,
       validate: RED.validators.typedInput("outputValueSecondType", false),
     },
-    outputValueSecondType: {  required: false },
+    outputValueSecondType: { required: false },
     outputValueThird: {
       required: false,
       validate: RED.validators.typedInput("outputValueThirdType", false),
     },
-    outputValueThirdType: {  required: false },
+    outputValueThirdType: { required: false },
 
     highestpriceoutput: {
       required: false,

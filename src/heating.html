@@ -1,55 +1,50 @@
-<script
-  type="text/javascript"
->
-RED.nodes.registerType("Heating", {
-  category: "Dynamic Prices Energy Saver",
-  color: "#a6bbcf",
-  defaults: {
-    name: { value: "Heating" },
-    periodlength: {
-      value: 1,
-      required: true,
+<script type="text/javascript">
+  RED.nodes.registerType("Heating", {
+    category: "Dynamic Prices Energy Saver",
+    color: "#a6bbcf",
+    defaults: {
+      name: { value: "Heating" },
+      periodlength: {
+        value: 1,
+        required: true,
+      },
+      nightstarthour: { required: false },
+      nightendhour: { required: false },
+      nighttargettemperature: { required: false },
+      minimaltemperature: {
+        value: 21,
+        required: true,
+      },
+      maximaltemperature: {
+        value: 23,
+        required: true,
+      },
+      increasetemperatureperhour: {
+        value: 0.2,
+        required: true,
+      },
+      decreasetemperatureperhour: {
+        value: 0.2,
+        required: true,
+      },
+      designtemperature: {
+        value: -12,
+        required: true,
+      },
     },
-    nightstarthour: { required: false },
-    nightendhour: { required: false },
-    nighttargettemperature: { required: false },
-    minimaltemperature: {
-      value: 21,
-      required: true
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-bar-chart",
+    color: "#FFCC66",
+    label: function () {
+      return this.name || "Heating";
     },
-    maximaltemperature: {
-      value: 23,
-      required: true
-    },
-    increasetemperatureperhour: {
-      value: 0.2,
-      required: true
-    },
-    decreasetemperatureperhour: {
-      value: 0.2,
-      required: true
-    },
-    designtemperature: {
-      value: -12,
-      required: true
-    },
-  },
-  inputs: 1,
-  outputs: 1,
-  icon: "font-awesome/fa-bar-chart",
-  color: "#FFCC66",
-  label: function () {
-    return this.name || "Heating";
-  },
-  outputLabels: ["on", "off", "schedule"],
-  oneditsave: function () {},
-});
+    outputLabels: ["on", "off", "schedule"],
+    oneditsave: function () {},
+  });
 </script>
 
-<script
-  type="text/html"
-  data-template-name="Heating"
->
+<script type="text/html" data-template-name="Heating">
   <div class="form-row">
       <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
       <input type="text" id="node-input-name" placeholder="Name" style="width: 240px">
@@ -116,76 +111,121 @@ RED.nodes.registerType("Heating", {
     <p>Temperature increase per hour when heating is on</p>
 </script>
 <script type="text/html" data-help-name="Heating">
-  <p>This node Takes the current temperatures and parameters to calculate a prognosis of the energy consumption of the next hours. 
-    Based on that it adjusts the setpoint to a higher value if energy is cheap compared to later periods</p>
-  <p>The set point will be sent as the payload in the output message.
-    if the current period is cheap, the Heating will start heating up to a maximal temperature.
-    Otherwise will start heating only if the current temperature is even below a the minimal temperature setpoint.
-    </p>
+  <p>
+    This node Takes the current temperatures and parameters to calculate a
+    prognosis of the energy consumption of the next hours. Based on that it
+    adjusts the setpoint to a higher value if energy is cheap compared to later
+    periods
+  </p>
+  <p>
+    The set point will be sent as the payload in the output message. if the
+    current period is cheap, the Heating will start heating up to a maximal
+    temperature. Otherwise will start heating only if the current temperature is
+    even below a the minimal temperature setpoint.
+  </p>
 
-     <h3>Inputs</h3>
-    <p>The input data must have a payload element (<b>msg.payload</b>). It can have the following optional structure:</p>
-    <ol type="1">
-      <ol>
-      <li><b>Price data from electric power supplier</b><br/>
-            <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>) node <br/>
-            Example: The payload of tibber price data<br/>
-                <dl class="message-properties">
-                  <dt>viewer.homes[0].currentSubscription.priceInfo.today| tomorrow
-                    <span class="property-type">[{&quot;total&quot;:number, &quot;startsAt&quot;: string }]</span>
-                </dt>
-                <dd> Array of price data<br/>
-                Example: { "total": 0.2494, "startsAt": "2021-10-11T00:00:00.000+02:00" } </dd>
-                </dl>
-           </li>
+  <h3>Inputs</h3>
+  <p>
+    The input data must have a payload element (<b>msg.payload</b>). It can have
+    the following optional structure:
+  </p>
+  <ol type="1">
+    <ol>
+      <li>
+        <b>Price data from electric power supplier</b><br />
+        <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>)
+        node <br />
+        Example: The payload of tibber price data<br />
+        <dl class="message-properties">
+          <dt>
+            viewer.homes[0].currentSubscription.priceInfo.today| tomorrow
+            <span class="property-type"
+              >[{&quot;total&quot;:number, &quot;startsAt&quot;: string }]</span
+            >
+          </dt>
+          <dd>
+            Array of price data<br />
+            Example: { "total": 0.2494, "startsAt":
+            "2021-10-11T00:00:00.000+02:00" }
+          </dd>
+        </dl>
+      </li>
     </ol>
-      <li><b>Data from the Heating Device</b><br/>
-                Every configuration parameter can be changed at runtime by sending it within the config element.<br/>
-                The following example shows a complete config input. All elements are optional:<br/>
-                <dl class="message-properties">
-                  <dt>payload.outertemperature
-                    <span class="property-type">"num"</span>
-                </dt>
-                  <dd> Output Value of cheapest price group</dd>
-                </dl>
-                <dl class="message-properties">
-                  <dt class="optional">payload.currenttemperature
-                    <span class="property-type">"num" as string </span>
-                  </dt>
-                  <dd>Output Value of second price group</dd>
-                </dl>
-       <li><b>Time</b><br/>
-            This will trigger the output. The inject node can be used to send the time.<br/>
-            This input is optional. The node sends outputs every period (when the price has changed)
-            <dl class="message-properties">
-              <dt class="optional">time
-                <span class="property-type">"num" as string </span>
-              </dt>
-              <dd>Output Value of second price group</dd>
-            </dl>
-        </li>
-    </ol>
+    <li>
+      <b>Data from the Heating Device</b><br />
+      Every configuration parameter can be changed at runtime by sending it
+      within the config element.<br />
+      The following example shows a complete config input. All elements are
+      optional:<br />
+      <dl class="message-properties">
+        <dt>
+          payload.outertemperature
+          <span class="property-type">"num"</span>
+        </dt>
+        <dd>Output Value of cheapest price group</dd>
+      </dl>
+      <dl class="message-properties">
+        <dt class="optional">
+          payload.currenttemperature
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>Output Value of second price group</dd>
+      </dl>
+    </li>
 
-      <h3>Outputs</h3>
-      <p>The output contains a msg.payload element containing the setpoint for the current state</p>
-      <ol type="1">
-          <li><b>value</b>:<br/>The node generates a schedule from the price data.<br/>
-              Depending on the price for the current hour, the node will assign one of the configured groups.<br/> The node calculates the group for the current time and sends the groups output value to this element<br/>
-              This element can be used to control attached devices via MQTT or other interfaces</li>
-  
-      </ol>
+    <li>
+      <b>Time</b><br />
+      This will trigger the output. The inject node can be used to send the
+      time.<br />
+      This input is optional. The node sends outputs every period (when the
+      price has changed)
+      <dl class="message-properties">
+        <dt class="optional">
+          time
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>Output Value of second price group</dd>
+      </dl>
+    </li>
+  </ol>
 
-      <h3>Details</h3>
+  <h3>Outputs</h3>
+  <p>
+    The output contains a msg.payload element containing the setpoint for the
+    current state
+  </p>
+  <ol type="1">
+    <li>
+      <b>value</b>:<br />The node generates a schedule from the price data.<br />
+      Depending on the price for the current hour, the node will assign one of
+      the configured groups.<br />
+      The node calculates the group for the current time and sends the groups
+      output value to this element<br />
+      This element can be used to control attached devices via MQTT or other
+      interfaces
+    </li>
+  </ol>
 
-      <p>A typical use case for this node is optimization of power consumption for heating a room or a house using an electrical heat pump.</p>
+  <h3>Details</h3>
 
-      <p>The output of each range will set the set point the given price state the heat pump.<br/>
-      If the electric power is cheap, the setpoint is the configured maximum temperature. It's more likely that the heatpump starts heating.
-      Otherwise and the heat pump will start hot water generation also if the tank temperature is higher.<br/>
-      If the price is high, the setpoint is the minimum temperature. The heatpump will start only if it's below this temperature<br/>
-      The "Cool Down Temperature difference per hour" will be used to estimate the time until heating needs to be started because of the temperature is lower than setpoint.
-      A high outertemperature will increase this time period. 
-      The "Heat up temperature difference per hour" will be used to estimate the required run time of the heating.
-      </p>
+  <p>
+    A typical use case for this node is optimization of power consumption for
+    heating a room or a house using an electrical heat pump.
+  </p>
 
+  <p>
+    The output of each range will set the set point the given price state the
+    heat pump.<br />
+    If the electric power is cheap, the setpoint is the configured maximum
+    temperature. It's more likely that the heatpump starts heating. Otherwise
+    and the heat pump will start hot water generation also if the tank
+    temperature is higher.<br />
+    If the price is high, the setpoint is the minimum temperature. The heatpump
+    will start only if it's below this temperature<br />
+    The "Cool Down Temperature difference per hour" will be used to estimate the
+    time until heating needs to be started because of the temperature is lower
+    than setpoint. A high outertemperature will increase this time period. The
+    "Heat up temperature difference per hour" will be used to estimate the
+    required run time of the heating.
+  </p>
 </script>
