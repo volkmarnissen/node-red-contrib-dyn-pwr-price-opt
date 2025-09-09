@@ -17,6 +17,11 @@ If the current time range is a low price range, the node will output a lower tem
 If heating is required, because the room temperature is below the set point, the heat pump will start.
 The temperature range can be configured for the node. A larger range will result in more flexibility to find lower price ranges.
 On the other hand, it might lower the comfort.
+If the current time range is "expensive", the node will output a higher temperature set point. 
+If the **reference room temperature** is below the set point, the heating will stop.
+
+However, if the room temperature is outside minimal/maximal temperature range, the heating will "ignore" the nodes set point.
+This will also work if this cost saver (nodes) are not active.
 
 If the house has a **good insulation**, this will also give more flexibility.
 It is optimal if all rooms in the house can be controlled by the **reference room temperature**, because the node treats the house as a temperature storage.
