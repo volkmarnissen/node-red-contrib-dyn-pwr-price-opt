@@ -132,9 +132,13 @@
   <ol type="1">
     <ol>
       <li>
-        <b>Price data from electric power supplier</b><br />
-        <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>)
-        node <br />
+        <b>Price data from electric power supplier</b><br/>
+        Use this Query in <code>msg.payload</code> for the tibber-query node:<br/>
+        <span style="font-family:monospace">
+        {<br/> viewer {<br/>&nbsp;homes {<br/>&nbsp;&nbsp;currentSubscription{<br/>&nbsp;&nbsp;&nbsp;priceInfo{<br/>&nbsp;&nbsp;&nbsp;&nbsp;today {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/>&nbsp;&nbsp;&nbsp;&nbsp;tomorrow {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/> } } } } }<br/> 
+        </span>
+    <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>)
+       node <br />
         Example: The payload of tibber price data<br />
         <dl class="message-properties">
           <dt>
@@ -214,18 +218,68 @@
   </p>
 
   <p>
-    The output of each range will set the set point the given price state the
-    heat pump.<br />
     If the electric power is cheap, the setpoint is the configured maximum
     temperature. It's more likely that the heatpump starts heating. Otherwise
     and the heat pump will start hot water generation also if the tank
     temperature is higher.<br />
     If the price is high, the setpoint is the minimum temperature. The heatpump
     will start only if it's below this temperature<br />
-    The "Cool Down Temperature difference per hour" will be used to estimate the
-    time until heating needs to be started because of the temperature is lower
-    than setpoint. A high outertemperature will increase this time period. The
-    "Heat up temperature difference per hour" will be used to estimate the
-    required run time of the heating.
-  </p>
+    The following configuration parameters are available:<br/>
+    <dl class="message-properties">
+        <dt class="optional">
+          Period: Length of one Period
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>Defines the length of a time range delivered by the energy provider.
+          1 hour is the default. </dd>
+      </dl>
+    <dl class="message-properties">
+        <dt class="optional">
+          Setback at night: Active during
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>Defines the time range for the night. E.g. 22:00 - 05:00. Another (lower) set temperature can be specified. To prevent the heat pump from running at night</dd>
+      </dl>
+   <dl class="message-properties">
+        <dt class="optional">
+          Setback at night: Set temp.
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>Set temperature during the night. A low temperature prevents the heat pump from running at night</dd>
+      </dl>
+  <dl class="message-properties">
+        <dt class="optional">
+          Room Temperature Range: Min/Max
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>Minimal/maximal acceptable Room temperature. The cost optimization happens in this temperature range.</dd>
+      </dl>
+  <dl class="message-properties">
+        <dt class="optional">
+          Cool Down and Heat Up Parameters: Design Temp.
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd>This is a technical parameter for the heating. It provides the minimal outer temperature, which is base for calculating the heating power of the system<br/>
+          In middle europe, it is around -12°C.
+        </dd>
+      </dl> 
+  <dl class="message-properties">
+        <dt class="optional">
+          Cool Down and Heat Up Parameters: Cool Down Temp.
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd> The temperature the <b>reference room temperature</b> decrements when the outer temperature is equal to the design temperature and the heat pump is off.
+          This value will be used to calculate the number of periods required for heating during the day.
+        </dd>
+      </dl> 
+  <dl class="message-properties">
+        <dt class="optional">
+          Cool Down and Heat Up Parameters: Heat Up Temp.
+          <span class="property-type">"num" as string </span>
+        </dt>
+        <dd> The temperature the <b>reference room temperature</b> increments when the heat pump is on.
+          This value will be used to calculate the number of periods required for heating during the day.
+        </dd>
+      </dl>   
+    </p>
 </script>
