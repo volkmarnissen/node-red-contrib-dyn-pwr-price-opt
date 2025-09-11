@@ -2,6 +2,7 @@ import { start } from "repl";
 import { PriceData } from "./@types/basenode";
 import { ScheduleEntry } from "./heating";
 import { IpriceInfo } from "./periodgenerator";
+import { tmpdir } from "os";
 
 export enum HighestPriceUsageEnum {
   consumption,
@@ -51,28 +52,15 @@ export class EnergyConsumption {
     if (!this.config.priceInfo.prices.periodlength)
       throw new Error("EnergyConsumption: No priceInfo.prices.periodlength");
   }
-  private getHighestPriceOutout(entry:ScheduleEntry):any{
-    let hour = new Date(entry.start).getHours()
-    if (
-      this.config.nighttimestarthour != undefined && this.config.nighttimestarthour >= new Date(entry.start).getHours() &&
-      this.config.nighttimeendhour != undefined && this.config.nighttimeendhour < new Date(entry.start).getHours() &&
-      this.config.nighttimeoutput != undefined &&
-      (hour < this.config.nighttimeendhour ||
-        hour >= this.config.nighttimestarthour)
-    )
-    return this.config.nighttimeoutput 
-    return  this.config.highestpriceoutput;
 
-  }
   private buildSchedule(currentTime: number) {
-    let range: PriceData[] = this.getPricesInDateRange(currentTime);
-    if (range == undefined || range.length == 0) {
+    let range: PriceData[] = structuredClone(this.getPricesInDateRange(currentTime));
       this.schedule.forEach((s) => {
-        s.returnValue = undefined;
+        if( s.returnValue != undefined)
+         delete s.returnValue;
       });
-      return;
-    }
-
+     if (range == undefined || range.length == 0) 
+        return;
     range.forEach((entry) => {
       this.schedule.push(entry);
     });
@@ -83,18 +71,16 @@ export class EnergyConsumption {
     let rangeValues: any[] = [];
     let cheapestHours = this.config.estimstoreperiods;
     // let mostExpHours = this.config.new property;
-    let mostExpHours = 0; // currently not implemented
     if (cheapestHours == undefined) cheapestHours = 0;
-    if (mostExpHours == undefined) mostExpHours = 0;
     let priceRangeSize =
-      this.config.estimconsumptionperiods < range.length
+      this.config.estimconsumptionperiods && this.config.estimconsumptionperiods < range.length
         ? this.config.estimconsumptionperiods
         : range.length;
 
-    if (cheapestHours + mostExpHours > (priceRangeSize * 2) / 3) {
-      cheapestHours = 0;
-      mostExpHours = 0;
-    }
+    // if (cheapestHours + mostExpHours > (priceRangeSize * 2) / 3) {
+    //   cheapestHours = 0;
+    //   mostExpHours = 0;
+    // }
     if (cheapestHours) {
       this.schedule.forEach((entry, idx) => {
         // entry.rangeId = RangeIds.cheapest ;
@@ -102,16 +88,17 @@ export class EnergyConsumption {
           entry.returnValue = this.config.cheapestpriceoutput;
       });
     }
-    if (this.config.cheapestpriceoutput)
-      rangeValues.push(this.config.cheapestpriceoutput);
+    // if (this.config.cheapestpriceoutput)
+    //   rangeValues.push(this.config.cheapestpriceoutput);
 
-    if (this.config.outputValueSecond != undefined) {
-      rangeValues.push(this.config.outputValueSecond);
-    }
+    // if (this.config.outputValueSecond != undefined) {
+    //   rangeValues.push(this.config.outputValueSecond);
+    // }
 
-    if (this.config.outputValueThird != undefined)
-      rangeValues.push(this.config.outputValueThird);
-
+    // if (this.config.outputValueThird != undefined)
+    //   rangeValues.push(this.config.outputValueThird);
+    // let mostExpHours = range.length - cheapestHours;
+    let mostExpHours = range.length - cheapestHours;
     let expIdx = mostExpHours;
     if (expIdx) {
       this.schedule.forEach((entry, idx) => {
@@ -120,7 +107,7 @@ export class EnergyConsumption {
           idx >= this.schedule.length - mostExpHours &&
           entry.returnValue == undefined
         ){
-            entry.returnValue = this.getHighestPriceOutout(entry);
+            entry.returnValue = this.config.highestpriceoutput;
         }
       });
     }
@@ -145,16 +132,16 @@ export class EnergyConsumption {
     let t = this.getStartTime(startTime);
     if (
       !this.config.priceInfo ||
-      !this.config.priceInfo.priceDatas ||
-      !this.config.estimconsumptionperiods
+      !this.config.priceInfo.priceDatas 
     )
       return undefined;
-    return this.config.priceInfo.priceDatas.filter(
-      (data) =>
-        data.start >= t && data.start < t + this.getStorygeCapacityDuration(),
-    );
+    let storageCapacity = this.getStorageCapacityDuration();
+    let rc = this.config.priceInfo.priceDatas.filter(
+      data =>   data.start >= t && t <= data.start + storageCapacity);
+    return rc;
   }
-  private getStorygeCapacityDuration() {
+  private getStorageCapacityDuration() {
+    // return at least one period
     return this.config.estimconsumptionperiods * 60 * 60 * 1000; // hours to millis
   }
   getOutputValue(time: number): any {
@@ -172,7 +159,7 @@ export class EnergyConsumption {
     if (!this.schedule || this.schedule.length == 0) return undefined;
 
     if (rc[0].returnValue == undefined)
-      throw new Error("No return value found in schedule");
+      throw new Error("No return value found in schedule")
     return rc[0].returnValue;
   }
 }

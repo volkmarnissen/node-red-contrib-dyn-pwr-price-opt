@@ -15,5 +15,6 @@ it("estimate",()=>{
 
     let ec = new EnergyConsumption(eci)
     ec.checkConfig()
-    ec.getOutputValue( )
+    
+    ec.getOutputValue(new Date().getTime() )
 })

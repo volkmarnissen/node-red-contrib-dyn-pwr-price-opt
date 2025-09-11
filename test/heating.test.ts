@@ -208,10 +208,11 @@ describe("Node Server tests", () => {
           maximaltemperature: "23",
           decreasetemperatureperhour: "0.1",
           increasetemperatureperhour: "0.2",
+          nightstarthour: undefined
         },
           [{ hour:5,fct:function (msg) {
             expect(msg.payload).toBe(21);
-          }}
+          }, payload: {currentTemperature: 22 ,time: getTestTime(5)}}
           ]
 
       )
@@ -225,11 +226,13 @@ describe("Node Server tests", () => {
         minimaltemperature: "45",
         maximaltemperature: "57",
         designtemperature: undefined,
+        nightstarthour: undefined
       },
       [
         {hour:cheapHour,fct:function (msg) {
           expect(msg.payload).toBe(57);
-        }}
+        }
+        , payload: {currentTemperature: 48 ,time: getTestTime(cheapHour)}}
       ],
     );
   });
@@ -240,11 +243,12 @@ describe("Node Server tests", () => {
         minimaltemperature: "45",
         maximaltemperature: "57",
         designtemperature: undefined,
+        nightstarthour: undefined
       },
       [
         {hour:18,fct:function (msg) {
           expect(msg.payload).toBe(45);
-        }},
+        }, payload: {currentTemperature: 22 ,time: getTestTime(18)}},
       ],
     );
   });
@@ -260,7 +264,7 @@ describe("Node Server tests", () => {
      [
         { hour:18, fct:function (msg) {
           expect(msg.payload as any).toBe(21);
-        }, payload: {time: getTestTime(7)}}
+        }, payload: {currentTemperature: 22 ,time: getTestTime(7)}}
       ],
     );
   });
@@ -273,13 +277,13 @@ describe("Node Server tests", () => {
         decreasetemperatureperhour: "0.1",
         increasetemperatureperhour: "0.2",
         nightstarthour: "22",
-        nightendhour: "6",
+        nightendhour: "9",
         nighttargettemperature: "12",
       },
       [
         { hour:23, fct:function (msg) {
-          expect(msg.payload as any).toBe(21);
-        }, payload: {time: getTestTime(7)}}
+          expect(msg.payload as any).toBe(23);
+        }, payload: { currenttemperature: 15, outertemperature:-10,time: getTestTime(4)}}
       ],
     );
   });
@@ -295,8 +299,10 @@ describe("Node Server tests", () => {
         nightendhour: "6",
         nighttargettemperature: "12",
       },
-      [{ hour:getTestTime(5), fct: function (msg) {}},
-       { payload:{ currenttemperature: 15, hour:getTestTime(5)}, fct: function (msg) {expect(msg.payload as any).toBe(12)}}],
+      [
+       { payload:{ currenttemperature: 15, outertemperature:-10, time:getTestTime(5)},hour:5, fct: function (msg) {
+        expect(msg.payload as any).toBe(12)}
+      }],
     );
   });
   it("Night low price => maximal temperature", function () {

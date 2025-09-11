@@ -1,6 +1,7 @@
 import { PriceData, TypeDescription } from "./@types/basenode";
 import { HeatingConfig } from "./@types/heating";
 import { BaseNode } from "./basenode";
+import * as fs from 'fs'
 import { EnergyConsumption, EnergyConsumptionInput } from "./energyconsumption";
 import {
   convertPrice,
@@ -40,7 +41,7 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
     }
     return rc;
   }
-  protected getEstimconsumptionperiods(): number {
+  protected getEstimconsumptionperiods(currentTime:number): number {
     return 0;
   }
 
@@ -52,12 +53,12 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
   abstract getNightTimeEndHour(): number;
   abstract getPeriodLength(): number;
   waitUntilNextHourTimer: any = undefined;
-  private buildEnergyConsumptionInput(): EnergyConsumptionInput {
+  private buildEnergyConsumptionInput(currentTime:number): EnergyConsumptionInput {
     if (!this.priceInfo || !this.priceInfo.priceDatas || !this.priceInfo.prices)
       throw new Error("No Price Data available");
     let eci: EnergyConsumptionInput = {
       priceInfo: this.priceInfo,
-      estimconsumptionperiods: this.getEstimconsumptionperiods(),
+      estimconsumptionperiods: this.getEstimconsumptionperiods(currentTime),
       estimstoreperiods: this.getEstimstoreperiods(),
       cheapestpriceoutput: this.getcheapestpriceoutput(),
       highestpriceoutput: this.gethighestpriceoutput(),
@@ -67,14 +68,24 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
     };
     return eci;
   }
+    protected isNightTime(currentTime:number):boolean{
+    if( this.getNightTimeStartHour() == undefined ||
+        this.getNightTimeEndHour() == undefined ||
+        this.getNightTimeOutput() == undefined)
+        return false;
+    let hour = new Date(currentTime).getHours()
+    return (this.getNightTimeStartHour() >= hour) || (this.getNightTimeEndHour() < hour); 
+  }
   onTime(time: number): void {
     if (this.configInvalid) throw new Error(this.configInvalid);
     let currentHour = new Date(time).getHours();
-
-
-    let ec = new EnergyConsumption(this.buildEnergyConsumptionInput());
+    let eci = this.buildEnergyConsumptionInput(time);
+    let ec = new EnergyConsumption(eci);
     let value = ec.getOutputValue(time);
-  
+    if( this.isNightTime( time) && value == (this.config as HeatingConfig).minimaltemperature )
+      value = (this.config as HeatingConfig).nighttargettemperature;
+    fs.appendFile("/share/node-red-contrib-dyn-pwr-price-opt.log", currentHour.toLocaleString() + " " + 
+      (this.config as HeatingConfig).name + ": " + value, (err)=>{ /* Ignore errors */})
     if (value) {
       this.status.bind(this)({
         fill: "green",

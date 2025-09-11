@@ -2,7 +2,7 @@ import { PriceData, TypeDescription } from "./@types/basenode";
 import { HeatingConfig } from "./@types/heating";
 import { BaseNodeEnergyConsumption } from "./basenodeec";
 import { IpriceInfo, priceConverterFilterRegexs } from "./periodgenerator";
-
+const maxHours = 48 // maximal number of hours in forecast
 const tConfig: TypeDescription = {
   typeFields: [],
   numberFields: [
@@ -54,18 +54,17 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
   getNightTimeEndHour(): number {
     return this.config.nightendhour;
   }
-  getEstimconsumptionperiods(): number {
-    if(this.config.designtemperature == undefined) // hotwater
-      if( this.currenttemperature == undefined ){
+  getEstimconsumptionperiods(currentTime:number): number {
+    if( this.currenttemperature == undefined ){
         console.log("No current temperature available in payload")
         return this.config.minimaltemperature /this.config.decreasetemperatureperhour
-      }
-      else
-        if(this.currenttemperature > this.config.minimaltemperature)
-          return 0 // no heating required
-        else
-          return (this.config.minimaltemperature - this.currenttemperature)*this.config.decreasetemperatureperhour
+    }
+    if((this.currenttemperature > this.config.minimaltemperature)|| (this.isNightTime(currentTime) && this.currenttemperature > this.config.nighttargettemperature) )
+      return maxHours // no heating required
+    if(this.config.designtemperature == undefined) // hotwater
+      return (this.config.minimaltemperature - this.currenttemperature)*this.config.decreasetemperatureperhour
     // Heating
+    let minimaltemperature =  this.isNightTime(currentTime)? this.config.nighttargettemperature:this.config.minimaltemperature
     let decreasetemperatureperhour = this.config.decreasetemperatureperhour;
     if (this.outertemperature != undefined && this.config.designtemperature != undefined ) {
       if (this.outertemperature > noheattemperature)
@@ -74,17 +73,10 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
         (noheattemperature - this.outertemperature) /
         (noheattemperature - this.config.designtemperature);
     }
-    let currenttemperature = this.currenttemperature;
-    if (
-      this.currenttemperature == undefined ||
-      this.currenttemperature >= this.config.minimaltemperature
-    )
-      return 0;
-
     return Math.floor(
-      ((this.config.minimaltemperature - currenttemperature) *
+      ((minimaltemperature - this.currenttemperature) /
         decreasetemperatureperhour) *
-        this.getPeriodLength(),
+        this.getPeriodLength()
     );
   }
   getPeriodLength() {
@@ -98,7 +90,6 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
     return periodlength;
   }
   getEstimstoreperiods(): number {
-    let increasetemperatureperhour = this.config.increasetemperatureperhour;
     let currenttemperature = this.currenttemperature;
     if (this.currenttemperature == undefined)
       currenttemperature = this.config.minimaltemperature;
