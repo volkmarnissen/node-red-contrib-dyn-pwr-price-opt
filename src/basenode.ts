@@ -56,8 +56,9 @@ export class BaseNode<Config> {
       });
   }
   protected onInput(msg: MessageType): void {
-    let time = Date.now();
-    if (msg.payload && msg.payload.time) time = msg.payload.time;
+    let timeNow = Date.now();
+    let timePayload = undefined;
+    if (msg.payload && msg.payload.time) timePayload = msg.payload.time;
     let nodes: { name: string; node: any }[] = [];
     this.buildNameList(msg, "", nodes);
     try {
@@ -68,7 +69,7 @@ export class BaseNode<Config> {
             handled = handled || listener.func(node.node);
         });
       });
-      if (time != undefined) this.onTime(time);
+      if (timePayload != undefined) this.onTime(timePayload);
     } catch (e) {
       console.log(e);
       throw e;

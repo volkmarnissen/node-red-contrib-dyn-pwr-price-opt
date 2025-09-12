@@ -5,6 +5,9 @@ export default function register(RED: any): any {
     constructor(config: any) {
       super(config, RED);
     }
+    getDesignTemperature(): number|undefined {
+      return undefined
+    }
   }
   // In unit tests, registerType returns the node class in production, the return code is not used
   return RED.nodes.registerType("Hotwater", HotwaterNode);

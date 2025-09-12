@@ -8,6 +8,7 @@ import {
   IpriceInfo,
   priceConverterFilterRegexs,
 } from "./periodgenerator";
+import { debug } from "console";
 const toleranceInMillis = 100;
 
 export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
@@ -44,48 +45,83 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
   protected getEstimconsumptionperiods(currentTime:number): number {
     return 0;
   }
-
-  abstract getEstimstoreperiods(): number;
   abstract getcheapestpriceoutput(): any;
   abstract gethighestpriceoutput(): any;
   abstract getNightTimeOutput(): any;
   abstract getNightTimeStartHour(): number;
   abstract getNightTimeEndHour(): number;
   abstract getPeriodLength(): number;
+  abstract getCurrentTemperature():number;
+  abstract getMinimalTemperature():number; 
+  abstract getMaximalTemperature():number; 
+  abstract getIncreaseTemperaturePerHour():number; 
+  abstract getDecreaseTemperaturePerHour();
+  abstract getDesignTemperature(): number;
+  abstract getOuterTemperature(): number;
   waitUntilNextHourTimer: any = undefined;
   private buildEnergyConsumptionInput(currentTime:number): EnergyConsumptionInput {
     if (!this.priceInfo || !this.priceInfo.priceDatas || !this.priceInfo.prices)
       throw new Error("No Price Data available");
     let eci: EnergyConsumptionInput = {
       priceInfo: this.priceInfo,
-      estimconsumptionperiods: this.getEstimconsumptionperiods(currentTime),
-      estimstoreperiods: this.getEstimstoreperiods(),
-      cheapestpriceoutput: this.getcheapestpriceoutput(),
-      highestpriceoutput: this.gethighestpriceoutput(),
       nighttimeoutput: this.getNightTimeOutput(),
       nighttimestarthour: this.getNightTimeStartHour(),
-      nighttimeendhour: this.getNightTimeEndHour()
+      nighttimeendhour: this.getNightTimeEndHour(),
+      currenttemperature: this.getCurrentTemperature(), 
+      minimaltemperature: this.getMinimalTemperature(), 
+      maximaltemperature: this.getMaximalTemperature(), 
+      increasetemperatureperhour: this.getIncreaseTemperaturePerHour(), 
+      decreasetemperatureperhour: this.getDecreaseTemperaturePerHour(),
+      designtemperature:this.getDesignTemperature(),
+      outertemperature: this.getOuterTemperature()
     };
+    if( eci.currenttemperature == undefined)
+      throw new Error("No current temperature in payload available");
+    if( eci.designtemperature != undefined && eci.outertemperature == undefined)
+      throw new Error("No outer temperature in payload available");
+    if( eci.priceInfo == undefined|| eci.priceInfo.priceDatas.length == 0)
+       throw new Error("No price info available");
+
     return eci;
   }
-    protected isNightTime(currentTime:number):boolean{
-    if( this.getNightTimeStartHour() == undefined ||
-        this.getNightTimeEndHour() == undefined ||
-        this.getNightTimeOutput() == undefined)
-        return false;
-    let hour = new Date(currentTime).getHours()
-    return (this.getNightTimeStartHour() >= hour) || (this.getNightTimeEndHour() < hour); 
-  }
+
+  
   onTime(time: number): void {
+    // on Time will always send a payload even in case of errors
+    // This makes testing easier
+    if(!this.processOutput(time))
+      this.send([
+              {
+                payload: { error: "See node status"}
+              },
+            ]);;
+  }
+  processOutput( time:number):boolean{
     if (this.configInvalid) throw new Error(this.configInvalid);
     let currentHour = new Date(time).getHours();
-    let eci = this.buildEnergyConsumptionInput(time);
-    let ec = new EnergyConsumption(eci);
+    let ec:EnergyConsumption;
+    try {
+      let eci = this.buildEnergyConsumptionInput(time);
+      ec = new EnergyConsumption(eci);
+    }
+    catch (e){
+      this.status.bind(this)({
+          fill: "red",
+          shape: "dot",
+          text: e.message
+        });   
+      return false;
+    }
+ 
     let value = ec.getOutputValue(time);
-    if( this.isNightTime( time) && value == (this.config as HeatingConfig).minimaltemperature )
+    if( ec.isNightTime( time) && value == (this.config as HeatingConfig).minimaltemperature )
       value = (this.config as HeatingConfig).nighttargettemperature;
-    fs.appendFile("/share/node-red-contrib-dyn-pwr-price-opt.log", currentHour.toLocaleString() + " " + 
-      (this.config as HeatingConfig).name + ": " + value, (err)=>{ /* Ignore errors */})
+    let s = ""
+    ec.schedule.forEach((e)=>{
+      s += new Date(e.start).getHours().toString() + " " +  e.returnValue + ", "
+    })
+    fs.appendFile("/share/node-red-contrib-dyn-pwr-price-opt.log", new Date(time).toLocaleString() + " " + 
+      (this.config as HeatingConfig).name + ": " + value + (this.lastSetPoint == value? "":" changed")+ s +"\n", (err)=>{ /* Ignore errors */})
     if (value) {
       this.status.bind(this)({
         fill: "green",
@@ -103,6 +139,7 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
             ]);
           else debugger;
           this.lastSetPoint = value;
+          return true;
         }
       } catch (e) {
         this.status.bind(this)({
@@ -117,11 +154,12 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
         shape: "dot",
         text: "No Schedule available",
       });
+    return false;
   }
 
   onFullHour(time: number = Date.now()) {
     try {
-      this.onTime(time);
+      this.processOutput(time);
     } catch (e: any) {
       this.status({ fill: "red", shape: "dot", text: e.message });
     }

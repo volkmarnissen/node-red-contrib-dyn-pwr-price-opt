@@ -112,8 +112,8 @@ function executeFlow(
   helper: any,
   attrs: any,
   onOutput: OnOutputFunction[],
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     try {
       let cfg = Object.assign(config, attrs);
 
@@ -138,13 +138,14 @@ function executeFlow(
           expect(outputNode).not.toBeNull();
           let callCount = 0
           outputNode.on("input", (msg:any)=>{
-            onOutput[callCount].fct(msg)
-            ++callCount
-            if( onOutput.length > callCount){
-              powerPriceOptimizerNode.receive(buildPayload(onOutput[callCount]));    
-            }
-            else
-              resolve() // No second call
+              expect(msg.payload.error).not.toBeDefined();
+              onOutput[callCount].fct(msg)
+              ++callCount
+              if( onOutput.length > callCount){
+                powerPriceOptimizerNode.receive(buildPayload(onOutput[callCount]));    
+              }
+              else
+                resolve("OK") // No further call
           })
                
    
@@ -201,7 +202,7 @@ describe("Node Server tests", () => {
   });
 
   it("should return a temperature", function () {
-    return executeFlow(
+    return expect(executeFlow(
         helper,
         {
           minimaltemperature: "21",
@@ -212,10 +213,10 @@ describe("Node Server tests", () => {
         },
           [{ hour:5,fct:function (msg) {
             expect(msg.payload).toBe(21);
-          }, payload: {currentTemperature: 22 ,time: getTestTime(5)}}
+          }, payload: {currenttemperature: 22 , outertemperature: 15, time: getTestTime(5)}}
           ]
 
-      )
+      )).resolves.toBe("OK");
   
   });
 
@@ -232,7 +233,7 @@ describe("Node Server tests", () => {
         {hour:cheapHour,fct:function (msg) {
           expect(msg.payload).toBe(57);
         }
-        , payload: {currentTemperature: 48 ,time: getTestTime(cheapHour)}}
+        , payload: {currenttemperature: 48, time: getTestTime(cheapHour)}}
       ],
     );
   });
@@ -248,7 +249,7 @@ describe("Node Server tests", () => {
       [
         {hour:18,fct:function (msg) {
           expect(msg.payload).toBe(45);
-        }, payload: {currentTemperature: 22 ,time: getTestTime(18)}},
+        }, payload: {currenttemperature: 22 ,time: getTestTime(18)}},
       ],
     );
   });
@@ -264,7 +265,7 @@ describe("Node Server tests", () => {
      [
         { hour:18, fct:function (msg) {
           expect(msg.payload as any).toBe(21);
-        }, payload: {currentTemperature: 22 ,time: getTestTime(7)}}
+        }, payload: {currenttemperature: 22 ,time: getTestTime(7)}}
       ],
     );
   });
@@ -305,17 +306,5 @@ describe("Node Server tests", () => {
       }],
     );
   });
-  it("Night low price => maximal temperature", function () {
-    return executeFlow(
-      helper,
-      {
-        storagecapacity: "24",
 
-        outputValueLastHours: "5",
-        outputValueSecond: '{ "hotwatertargettemp": 47 }',
-        outputValueSecondType: "json",
-      },
-      [{ hour:5, fct: function (msg) {expect(msg.payload as any).toBe(12)}}],
-    );
-  });
 });

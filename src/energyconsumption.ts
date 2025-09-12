@@ -3,6 +3,8 @@ import { PriceData } from "./@types/basenode";
 import { ScheduleEntry } from "./heating";
 import { IpriceInfo } from "./periodgenerator";
 import { tmpdir } from "os";
+const maxHours = 48 // maximal number of hours in forecast
+const noheattemperature = 21;
 
 export enum HighestPriceUsageEnum {
   consumption,
@@ -10,20 +12,21 @@ export enum HighestPriceUsageEnum {
 }
 export interface EnergyConsumptionInput {
   priceInfo: IpriceInfo;
-  estimconsumptionperiods: number;
-  estimstoreperiods?: number;
   highestpriceperiodsusage?: HighestPriceUsageEnum;
-  cheapestpriceoutput: any;
-  outputValueSecond?: any;
-  outputValueThird?: any;
-  highestpriceoutput: any;
-  nighttimeoutput: any,
-  nighttimestarthour: number,
-  nighttimeendhour:number
+  nighttimeoutput?: any,
+  nighttimestarthour?: number,
+  nighttimeendhour?:number,
+  currenttemperature:number,
+  minimaltemperature:number,
+  maximaltemperature:number,
+  increasetemperatureperhour:number,
+  decreasetemperatureperhour:number,
+  designtemperature?:number,
+  outertemperature?:number
 }
 export class EnergyConsumption {
   schedule: ScheduleEntry[] = [];
-  constructor(private config: EnergyConsumptionInput) {}
+  constructor(private inputData: EnergyConsumptionInput) {}
   private getStartTime(time: number): number {
     this.checkConfig();
     let startPeriodTime = new Date(time);
@@ -31,9 +34,9 @@ export class EnergyConsumption {
       Math.floor(
         startPeriodTime.getMinutes() /
           60 /
-          this.config.priceInfo.prices.periodlength,
+          this.inputData.priceInfo.prices.periodlength,
       ) *
-        (60 * this.config.priceInfo.prices.periodlength),
+        (60 * this.inputData.priceInfo.prices.periodlength),
     );
     if (startPeriodTime.getMinutes() != 0)
       startPeriodTime.setMinutes(periodMinutes);
@@ -42,14 +45,14 @@ export class EnergyConsumption {
     return startPeriodTime.getTime();
   }
   checkConfig() {
-    if (!this.config) throw new Error("EnergyConsumption: No config");
-    if (!this.config.priceInfo)
+    if (!this.inputData) throw new Error("EnergyConsumption: No config");
+    if (!this.inputData.priceInfo)
       throw new Error("EnergyConsumption: No priceInfo");
-    if (!this.config.priceInfo.priceDatas)
+    if (!this.inputData.priceInfo.priceDatas)
       throw new Error("EnergyConsumption: No priceInfo.priceDatas");
-    if (!this.config.priceInfo.prices)
+    if (!this.inputData.priceInfo.prices)
       throw new Error("EnergyConsumption: No priceInfo.prices");
-    if (!this.config.priceInfo.prices.periodlength)
+    if (!this.inputData.priceInfo.prices.periodlength)
       throw new Error("EnergyConsumption: No priceInfo.prices.periodlength");
   }
 
@@ -69,12 +72,13 @@ export class EnergyConsumption {
     // Assign cheapest hours to first range
     let idx = 0;
     let rangeValues: any[] = [];
-    let cheapestHours = this.config.estimstoreperiods;
+    let cheapestHours = this.getEstimstoreperiods();
     // let mostExpHours = this.config.new property;
     if (cheapestHours == undefined) cheapestHours = 0;
+    let estimconsumptionperiods = this.getEstimconsumptionPeriods(currentTime);
     let priceRangeSize =
-      this.config.estimconsumptionperiods && this.config.estimconsumptionperiods < range.length
-        ? this.config.estimconsumptionperiods
+      estimconsumptionperiods && estimconsumptionperiods < range.length
+        ? estimconsumptionperiods
         : range.length;
 
     // if (cheapestHours + mostExpHours > (priceRangeSize * 2) / 3) {
@@ -85,7 +89,7 @@ export class EnergyConsumption {
       this.schedule.forEach((entry, idx) => {
         // entry.rangeId = RangeIds.cheapest ;
         if (idx < cheapestHours)
-          entry.returnValue = this.config.cheapestpriceoutput;
+          entry.returnValue = this.inputData.maximaltemperature;
       });
     }
     // if (this.config.cheapestpriceoutput)
@@ -107,12 +111,12 @@ export class EnergyConsumption {
           idx >= this.schedule.length - mostExpHours &&
           entry.returnValue == undefined
         ){
-            entry.returnValue = this.config.highestpriceoutput;
+            entry.returnValue = this.inputData.minimaltemperature;
         }
       });
     }
-    if (this.config.highestpriceoutput != undefined)
-      rangeValues.push(this.config.highestpriceoutput);
+    if (this.inputData.minimaltemperature != undefined)
+      rangeValues.push(this.inputData.minimaltemperature);
     // divide other ranges in equal pieces
     let rangeSize = Math.floor(
       (priceRangeSize - cheapestHours - mostExpHours) /
@@ -131,18 +135,18 @@ export class EnergyConsumption {
     // Make sure, that time is in Range
     let t = this.getStartTime(startTime);
     if (
-      !this.config.priceInfo ||
-      !this.config.priceInfo.priceDatas 
+      !this.inputData.priceInfo ||
+      !this.inputData.priceInfo.priceDatas 
     )
       return undefined;
-    let storageCapacity = this.getStorageCapacityDuration();
-    let rc = this.config.priceInfo.priceDatas.filter(
+    let storageCapacity = this.getStorageCapacityDuration(startTime);
+    let rc = this.inputData.priceInfo.priceDatas.filter(
       data =>   data.start >= t && t <= data.start + storageCapacity);
     return rc;
   }
-  private getStorageCapacityDuration() {
+  private getStorageCapacityDuration(currentTime:number) {
     // return at least one period
-    return this.config.estimconsumptionperiods * 60 * 60 * 1000; // hours to millis
+    return this.getEstimconsumptionPeriods( currentTime) * 60 * 60 * 1000; // hours to millis
   }
   getOutputValue(time: number): any {
     this.buildSchedule(time);
@@ -151,15 +155,79 @@ export class EnergyConsumption {
         entry.start <= time &&
         time <
           entry.start +
-            60 * 60 * this.config.priceInfo.prices.periodlength * 1000,
+            60 * 60 * this.inputData.priceInfo.prices.periodlength * 1000,
     );
     if (rc && rc.length > 1)
       throw new Error("More than one value found  in schedule");
-    if (!rc || rc.length == 0) return this.config.highestpriceoutput; // no heating
+    if (!rc || rc.length == 0) return this.inputData.minimaltemperature; // no heating
     if (!this.schedule || this.schedule.length == 0) return undefined;
 
     if (rc[0].returnValue == undefined)
       throw new Error("No return value found in schedule")
     return rc[0].returnValue;
+  }
+  getEstimconsumptionPeriods(currentTime:number): number {
+    if( this.inputData.currenttemperature == undefined ){
+        console.log("No current temperature available in payload")
+        return this.inputData.minimaltemperature /this.inputData.decreasetemperatureperhour
+    }
+    if(this.isNightTime(currentTime)){
+      if( this.inputData.currenttemperature < this.inputData.nighttimeoutput) 
+      return 0 // immediate heating required      
+    }else{
+      if(this.inputData.currenttemperature < this.inputData.minimaltemperature)
+        return 0 // immediate heating required      
+    }
+    let minimaltemperature =  this.isNightTime(currentTime)? this.inputData.nighttimeoutput:this.inputData.minimaltemperature
+  
+    if(this.inputData.designtemperature == undefined) // hotwater
+      return Math.floor((this.inputData.currenttemperature - minimaltemperature)/this.inputData.decreasetemperatureperhour );
+    // Heating
+    let decreasetemperatureperhour = this.inputData.decreasetemperatureperhour;
+    if (this.inputData.outertemperature != undefined && this.inputData.designtemperature != undefined ) {
+      if (this.inputData.outertemperature > noheattemperature)
+        return maxHours; // no heating required
+      decreasetemperatureperhour *=
+        (noheattemperature - this.inputData.outertemperature) /
+        (noheattemperature - this.inputData.designtemperature);
+    }
+    return Math.floor(
+      ((this.inputData.currenttemperature - minimaltemperature ) /
+        decreasetemperatureperhour) *
+        this.getPeriodLength()
+    );
+  }
+
+  isNightTime(currentTime:number):boolean{
+    if( this.inputData.nighttimestarthour == undefined ||
+        this.inputData.nighttimeendhour == undefined ||
+        this.inputData.nighttimeoutput == undefined)
+        return false;
+    let hour = new Date(currentTime).getHours()
+    return (this.inputData.nighttimestarthour <= hour) || (this.inputData.nighttimeendhour > hour); 
+  }
+  getPeriodLength() {
+    let periodlength = 1;
+    if (
+      this.inputData.priceInfo &&
+      this.inputData.priceInfo.prices &&
+      this.inputData.priceInfo.prices.periodlength
+    )
+      periodlength = this.inputData.priceInfo.prices.periodlength;
+    return periodlength;
+  }
+  getEstimstoreperiods(): number {
+    let currenttemperature = this.inputData.currenttemperature;
+    if (this.inputData.currenttemperature == undefined)
+      currenttemperature = this.inputData.minimaltemperature;
+    if (currenttemperature != undefined && this.inputData.maximaltemperature) {
+      if (currenttemperature > this.inputData.maximaltemperature) return 0; // no heating required
+    }
+
+    return Math.floor(
+      ((this.inputData.maximaltemperature - currenttemperature) *
+        this.inputData.increasetemperatureperhour) *
+        this.getPeriodLength(),
+    );
   }
 }

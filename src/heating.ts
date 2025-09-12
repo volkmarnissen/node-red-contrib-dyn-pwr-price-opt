@@ -1,8 +1,7 @@
 import { PriceData, TypeDescription } from "./@types/basenode";
 import { HeatingConfig } from "./@types/heating";
 import { BaseNodeEnergyConsumption } from "./basenodeec";
-import { IpriceInfo, priceConverterFilterRegexs } from "./periodgenerator";
-const maxHours = 48 // maximal number of hours in forecast
+import { priceConverterFilterRegexs } from "./periodgenerator";
 const tConfig: TypeDescription = {
   typeFields: [],
   numberFields: [
@@ -18,26 +17,29 @@ const tConfig: TypeDescription = {
   ],
   booleanFields: [],
 };
-const noheattemperature = 21;
 
 export interface ScheduleEntry extends PriceData {
   returnValue?: any;
 }
 
 export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
-  priceInfo: IpriceInfo | undefined = undefined;
-  outertemperature: number | undefined = undefined;
-  currenttemperature: number | undefined = undefined;
-  lastSetPoint: number | undefined = undefined;
-  constructor(config: any, RED: any) {
-    super(config, tConfig, RED);
-    priceConverterFilterRegexs.forEach((regex) => {
-      this.registerInputListener(regex, this.readPricePayload.bind(this));
-    });
-    this.registerInputListener(
-      /^payload|currenttemperature$/g,
-      this.readHeatpumpPayload.bind(this),
-    );
+  getPeriodLength(): number {
+    return this.config.periodlength;
+  }
+  getCurrentTemperature(): number {
+    return this.currenttemperature ;
+  }
+  getMinimalTemperature(): number {
+    return this.config.minimaltemperature ;
+  }
+  getMaximalTemperature(): number {
+    return this.config.maximaltemperature ;
+  }
+  getIncreaseTemperaturePerHour(): number {
+    return this.config.increasetemperatureperhour ;
+  }
+  getDecreaseTemperaturePerHour() {
+    return this.config.decreasetemperatureperhour ;
   }
   getcheapestpriceoutput() {
     return this.config.maximaltemperature;
@@ -54,53 +56,20 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
   getNightTimeEndHour(): number {
     return this.config.nightendhour;
   }
-  getEstimconsumptionperiods(currentTime:number): number {
-    if( this.currenttemperature == undefined ){
-        console.log("No current temperature available in payload")
-        return this.config.minimaltemperature /this.config.decreasetemperatureperhour
-    }
-    if((this.currenttemperature > this.config.minimaltemperature)|| (this.isNightTime(currentTime) && this.currenttemperature > this.config.nighttargettemperature) )
-      return maxHours // no heating required
-    if(this.config.designtemperature == undefined) // hotwater
-      return (this.config.minimaltemperature - this.currenttemperature)*this.config.decreasetemperatureperhour
-    // Heating
-    let minimaltemperature =  this.isNightTime(currentTime)? this.config.nighttargettemperature:this.config.minimaltemperature
-    let decreasetemperatureperhour = this.config.decreasetemperatureperhour;
-    if (this.outertemperature != undefined && this.config.designtemperature != undefined ) {
-      if (this.outertemperature > noheattemperature)
-        return this.priceInfo.priceDatas.length; // no heating required
-      decreasetemperatureperhour *=
-        (noheattemperature - this.outertemperature) /
-        (noheattemperature - this.config.designtemperature);
-    }
-    return Math.floor(
-      ((minimaltemperature - this.currenttemperature) /
-        decreasetemperatureperhour) *
-        this.getPeriodLength()
-    );
+  getDesignTemperature(): number|undefined {
+    return this.config.designtemperature
   }
-  getPeriodLength() {
-    let periodlength = 1;
-    if (
-      this.priceInfo &&
-      this.priceInfo.prices &&
-      this.priceInfo.prices.periodlength
-    )
-      periodlength = this.priceInfo.prices.periodlength;
-    return periodlength;
+  getOuterTemperature(): number|undefined {
+    return this.outertemperature
   }
-  getEstimstoreperiods(): number {
-    let currenttemperature = this.currenttemperature;
-    if (this.currenttemperature == undefined)
-      currenttemperature = this.config.minimaltemperature;
-    if (currenttemperature != undefined && this.config.maximaltemperature) {
-      if (currenttemperature > this.config.maximaltemperature) return 0; // no heating required
-    }
-
-    return Math.floor(
-      ((this.config.maximaltemperature - currenttemperature) *
-        this.config.increasetemperatureperhour) *
-        this.getPeriodLength(),
+  constructor(config: any, RED: any) {
+    super(config, tConfig, RED);
+    priceConverterFilterRegexs.forEach((regex) => {
+      this.registerInputListener(regex, this.readPricePayload.bind(this));
+    });
+    this.registerInputListener(
+      /^payload|currenttemperature$/g,
+      this.readHeatpumpPayload.bind(this),
     );
   }
 }
