@@ -27,19 +27,19 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
     return this.config.periodlength;
   }
   getCurrentTemperature(): number {
-    return this.currenttemperature ;
+    return this.currenttemperature;
   }
   getMinimalTemperature(): number {
-    return this.config.minimaltemperature ;
+    return this.config.minimaltemperature;
   }
   getMaximalTemperature(): number {
-    return this.config.maximaltemperature ;
+    return this.config.maximaltemperature;
   }
   getIncreaseTemperaturePerHour(): number {
-    return this.config.increasetemperatureperhour ;
+    return this.config.increasetemperatureperhour;
   }
   getDecreaseTemperaturePerHour() {
-    return this.config.decreasetemperatureperhour ;
+    return this.config.decreasetemperatureperhour;
   }
   getcheapestpriceoutput() {
     return this.config.maximaltemperature;
@@ -56,11 +56,11 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
   getNightTimeEndHour(): number {
     return this.config.nightendhour;
   }
-  getDesignTemperature(): number|undefined {
-    return this.config.designtemperature
+  getDesignTemperature(): number | undefined {
+    return this.config.designtemperature;
   }
-  getOuterTemperature(): number|undefined {
-    return this.outertemperature
+  getOuterTemperature(): number | undefined {
+    return this.outertemperature;
   }
   constructor(config: any, RED: any) {
     super(config, tConfig, RED);
@@ -68,7 +68,7 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
       this.registerInputListener(regex, this.readPricePayload.bind(this));
     });
     this.registerInputListener(
-      /^payload|currenttemperature$/g,
+      /^payload$/g,
       this.readHeatpumpPayload.bind(this),
     );
   }

@@ -25,8 +25,8 @@ const config: HeatingConfig = {
   decreasetemperatureperhour: 0.3,
   designtemperature: -12,
 };
-const cheapHour:number = 4
-const expensiveHour= 18
+const cheapHour: number = 4;
+const expensiveHour = 18;
 let priceDataPostfix = ":00:00.000+02:00";
 let datePrefixes: string[] = ["2021-10-10T", "2021-10-11T"];
 let priceDataTemplate: number[] = [0.2, 0.24, 0.26, 0.23, 0.19, 0.22];
@@ -48,8 +48,10 @@ function buildPriceData(): any {
       }
   return rc;
 }
-function getTestTime(hour:number):number{
-  return Date.parse("2021-10-11T" + String(hour).padStart(2,'0') + ":00:00.000+02:00");
+function getTestTime(hour: number): number {
+  return Date.parse(
+    "2021-10-11T" + String(hour).padStart(2, "0") + ":00:00.000+02:00",
+  );
 }
 describe("Standalone Tests", () => {
   it("Generate schedule from payload", () => {
@@ -99,13 +101,16 @@ describe("Standalone Tests", () => {
     };
   });
 });
-type OnOutputFunction = { fct: (msg: any) => void, payload?:any, hour?:number};
+type OnOutputFunction = {
+  fct: (msg: any) => void;
+  payload?: any;
+  hour?: number;
+};
 
-function buildPayload(onOutput:OnOutputFunction):any{
-  if(onOutput.payload != undefined)
-    return onOutput
-  if( onOutput.hour != undefined ) 
-    return {payload:{time:getTestTime(onOutput.hour)}}
+function buildPayload(onOutput: OnOutputFunction): any {
+  if (onOutput.payload != undefined) return onOutput;
+  if (onOutput.hour != undefined)
+    return { payload: { time: getTestTime(onOutput.hour) } };
 }
 
 function executeFlow(
@@ -127,38 +132,41 @@ function executeFlow(
       let output = [["output"]];
       cfg.wires = output;
 
-      let flow: any[] = []
-      flow.push(cfg)
-      flow.push( { id: "output", type: "helper" });
+      let flow: any[] = [];
+      flow.push(cfg);
+      flow.push({ id: "output", type: "helper" });
       helper.load(powerPriceOptimizer, flow, function () {
         try {
           const powerPriceOptimizerNode = helper.getNode("heating");
           expect(powerPriceOptimizerNode).not.toBeNull();
           const outputNode = helper.getNode("output");
           expect(outputNode).not.toBeNull();
-          let callCount = 0
-          outputNode.on("input", (msg:any)=>{
-              expect(msg.payload.error).not.toBeDefined();
-              onOutput[callCount].fct(msg)
-              ++callCount
-              if( onOutput.length > callCount){
-                powerPriceOptimizerNode.receive(buildPayload(onOutput[callCount]));    
-              }
-              else
-                resolve("OK") // No further call
-          })
-               
-   
+          let callCount = 0;
+          outputNode.on("input", (msg: any) => {
+            expect(msg.payload.error).not.toBeDefined();
+            onOutput[callCount].fct(msg);
+            ++callCount;
+            if (onOutput.length > callCount) {
+              powerPriceOptimizerNode.receive(
+                buildPayload(onOutput[callCount]),
+              );
+            } else resolve("OK"); // No further call
+          });
+
           let data = fs.readFileSync(
             "test/data/tibber-prices-single-home.json",
             {
               encoding: "utf-8",
             },
           );
-          let msg = {payload:Object.assign(JSON.parse(data).payload,buildPayload(onOutput[0]).payload)}
+          let msg = {
+            payload: Object.assign(
+              JSON.parse(data).payload,
+              buildPayload(onOutput[0]).payload,
+            ),
+          };
           powerPriceOptimizerNode.receive(msg);
-          
-         } catch (e) {
+        } catch (e) {
           console.log(e);
           reject(e);
         }
@@ -202,22 +210,31 @@ describe("Node Server tests", () => {
   });
 
   it("should return a temperature", function () {
-    return expect(executeFlow(
+    return expect(
+      executeFlow(
         helper,
         {
           minimaltemperature: "21",
           maximaltemperature: "23",
           decreasetemperatureperhour: "0.1",
           increasetemperatureperhour: "0.2",
-          nightstarthour: undefined
+          nightstarthour: undefined,
         },
-          [{ hour:5,fct:function (msg) {
-            expect(msg.payload).toBe(21);
-          }, payload: {currenttemperature: 22 , outertemperature: 15, time: getTestTime(5)}}
-          ]
-
-      )).resolves.toBe("OK");
-  
+        [
+          {
+            hour: 5,
+            fct: function (msg) {
+              expect(msg.payload).toBe(23);
+            },
+            payload: {
+              currenttemperature: 22,
+              outertemperature: 15,
+              time: getTestTime(5),
+            },
+          },
+        ],
+      ),
+    ).resolves.toBe("OK");
   });
 
   it("Hotwater: low price => maximal temperature  ", function () {
@@ -227,13 +244,16 @@ describe("Node Server tests", () => {
         minimaltemperature: "45",
         maximaltemperature: "57",
         designtemperature: undefined,
-        nightstarthour: undefined
+        nightstarthour: undefined,
       },
       [
-        {hour:cheapHour,fct:function (msg) {
-          expect(msg.payload).toBe(57);
-        }
-        , payload: {currenttemperature: 48, time: getTestTime(cheapHour)}}
+        {
+          hour: cheapHour,
+          fct: function (msg) {
+            expect(msg.payload).toBe(57);
+          },
+          payload: { currenttemperature: 48, time: getTestTime(cheapHour) },
+        },
       ],
     );
   });
@@ -244,12 +264,16 @@ describe("Node Server tests", () => {
         minimaltemperature: "45",
         maximaltemperature: "57",
         designtemperature: undefined,
-        nightstarthour: undefined
+        nightstarthour: undefined,
       },
       [
-        {hour:18,fct:function (msg) {
-          expect(msg.payload).toBe(45);
-        }, payload: {currenttemperature: 22 ,time: getTestTime(18)}},
+        {
+          hour: 18,
+          fct: function (msg) {
+            expect(msg.payload).toBe(45);
+          },
+          payload: { currenttemperature: 22, time: getTestTime(18) },
+        },
       ],
     );
   });
@@ -262,10 +286,14 @@ describe("Node Server tests", () => {
         decreasetemperatureperhour: "0.1",
         increasetemperatureperhour: "0.2",
       },
-     [
-        { hour:18, fct:function (msg) {
-          expect(msg.payload as any).toBe(21);
-        }, payload: {currenttemperature: 22 ,time: getTestTime(7)}}
+      [
+        {
+          hour: 18,
+          fct: function (msg) {
+            expect(msg.payload as any).toBe(21);
+          },
+          payload: { currenttemperature: 22, time: getTestTime(7) },
+        },
       ],
     );
   });
@@ -276,21 +304,31 @@ describe("Node Server tests", () => {
         minimaltemperature: "21",
         maximaltemperature: "23",
         decreasetemperatureperhour: "0.1",
-        increasetemperatureperhour: "0.2",
+        increasetemperatureperhour: "4",
         nightstarthour: "22",
         nightendhour: "9",
         nighttargettemperature: "12",
       },
       [
-        { hour:23, fct:function (msg) {
-          expect(msg.payload as any).toBe(23);
-        }, payload: { currenttemperature: 15, outertemperature:-10,time: getTestTime(4)}}
+        {
+          hour: 23,
+          fct: function (msg) {
+            expect(msg.payload as any).toBe(23);
+          },
+          payload: {
+            currenttemperature: 15,
+            outertemperature: -10,
+            time: getTestTime(4),
+          },
+        },
       ],
     );
   });
   it("Night high price => night temperature", function () {
+    let helper2 = new NodeTestHelper();
+ 
     return executeFlow(
-      helper,
+      helper2,
       {
         minimaltemperature: "21",
         maximaltemperature: "23",
@@ -301,10 +339,77 @@ describe("Node Server tests", () => {
         nighttargettemperature: "12",
       },
       [
-       { payload:{ currenttemperature: 15, outertemperature:-10, time:getTestTime(5)},hour:5, fct: function (msg) {
-        expect(msg.payload as any).toBe(12)}
-      }],
+        {
+          payload: {
+            currenttemperature: 15,
+            outertemperature: -10,
+            time: getTestTime(5),
+          },
+          hour: 5,
+          fct: function (msg) {
+            console.log("In onInput " + msg.payload)
+            expect(msg.payload as any).toBe(12);
+          },
+        },
+      ],
     );
   });
+  // function executeExample(
+  //   filename: string,
+  //   nodesModifier: (node: any, data: any) => void,
+  //   validationFunction:(msg:any)=>void,
+  //   data: any,
+  // ): Promise<string> {
+  //   return new Promise<string>((resolve, reject) => {
+  //     // read example json file
+  //     helper.init('/Users/volkmar/node-red')
+  //     let exampleFile = join(__dirname, "..", "examples", filename);
+  //     let json = fs.readFileSync(exampleFile, { encoding: "utf8" });
+  //     let flow = JSON.parse(json);
+  //     let injectNode: any = undefined;
+  //     let outputNodeId = undefined;
+  //     let flowArray:any = []
+  //     Object.keys(flow).forEach((key) => {
+  //       if (flow[key].name != undefined) {
+  //         let name: string = flow[key].name;
+  //         if (name.startsWith("input")) injectNode = flow[key];
+  //         if (name.startsWith("output")) {
+  //           flow[key].type = "helper";
+  //           outputNodeId = flow[key].id
+  //           // helper will ignore the other attributes (hopefully)
+  //         }
+  //         nodesModifier(flow[key], data);
+  //         flowArray.push(flow[key]);
+  //       }
+  //     });
 
+  //     return helper.load(powerPriceOptimizer, flowArray, function () {
+  //       try {
+  //         if( outputNodeId == undefined){
+  //           reject(new Error("outputNode not found"))
+  //           return;
+  //         }
+  //         const outputNode = helper.getNode(outputNodeId);
+  //         expect( outputNode).not.toBeNull();
+  //         outputNode.on("input",validationFunction);
+  //       } catch (e) {
+  //         console.log(e);
+  //         reject(e);
+  //       }
+  //     });
+  //   });
+  // }
+  // function nodesModifier(node: any, data: any) {
+  //   if (node.name.startsWith("currenttemperature") && data.currenttemperature) {
+  //     node.op2 = '{"currenttemperature": ' + data.currenttemperature + "}";
+  //   }
+  //   if (node.name.startsWith("datetime trigger") && data.time) {
+  //     node.op2 = '{"time": ' + data.time + "}";
+  //   }
+  // }
+  it("Simple Example 4:00 42°C-> 40°C", () => {
+    for (let a: number = 0; a < 24; a++) {
+      console.log("" + a + ":00", getTestTime(a));
+    }
+  });
 });

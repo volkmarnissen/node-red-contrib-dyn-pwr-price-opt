@@ -12,15 +12,15 @@
       nightendhour: { required: false },
       nighttargettemperature: { required: false },
       minimaltemperature: {
-        value: 21,
+        value: 45,
         required: true,
       },
       maximaltemperature: {
-        value: 23,
+        value: 54,
         required: true,
       },
       increasetemperatureperhour: {
-        value: 0.2,
+        value: 20,
         required: true,
       },
       decreasetemperatureperhour: {
@@ -135,7 +135,7 @@
         <b>Price data from electric power supplier</b><br/>
         Use this Query in <code>msg.payload</code> for the tibber-query node:<br/>
         <span style="font-family:monospace">
-        {<br/> viewer {<br/>&nbsp;homes {<br/>&nbsp;&nbsp;currentSubscription{<br/>&nbsp;&nbsp;&nbsp;priceInfo{<br/>&nbsp;&nbsp;&nbsp;&nbsp;today {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/>&nbsp;&nbsp;&nbsp;&nbsp;tomorrow {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/> } } } } }<br/> 
+        {<br/> viewer {<br/>&nbsp;homes {<br/>&nbsp;&nbsp;currentSubscription{<br/>&nbsp;&nbsp;&nbsp;priceInfo{<br/>&nbsp;&nbsp;&nbsp;&nbsp;today {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/>&nbsp;&nbsp;&nbsp;&nbsp;tomorrow {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/> } } } } }<br/>
         </span>
     <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>)
        node <br />
@@ -262,7 +262,7 @@
         <dd>This is a technical parameter for the heating. It provides the minimal outer temperature, which is base for calculating the heating power of the system<br/>
           In middle europe, it is around -12°C.
         </dd>
-      </dl> 
+      </dl>
   <dl class="message-properties">
         <dt class="optional">
           Cool Down and Heat Up Parameters: Cool Down Temp.
@@ -271,7 +271,7 @@
         <dd> The temperature the <b>reference room temperature</b> decrements when the outer temperature is equal to the design temperature and the heat pump is off.
           This value will be used to calculate the number of periods required for heating during the day.
         </dd>
-      </dl> 
+      </dl>
   <dl class="message-properties">
         <dt class="optional">
           Cool Down and Heat Up Parameters: Heat Up Temp.
@@ -280,6 +280,6 @@
         <dd> The temperature the <b>reference room temperature</b> increments when the heat pump is on.
           This value will be used to calculate the number of periods required for heating during the day.
         </dd>
-      </dl>   
+      </dl>
     </p>
 </script>

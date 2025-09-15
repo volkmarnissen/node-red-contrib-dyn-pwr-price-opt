@@ -101,159 +101,159 @@
     <p>Temperature increase per hour when Hotwater heating is on</p>
 </script>
 <script type="text/html" data-help-name="Hotwater">
-  <p>
-    This node Takes the current temperatures and parameters to calculate a
-    prognosis of the energy consumption of the next hours. Based on that it
-    adjusts the setpoint to a higher value if energy is cheap compared to later
-    periods
-  </p>
-  <p>
-    The set point will be sent as the payload in the output message. if the
-    current period is cheap, the Hotwater will start heating Hotwater up to a
-    maximal temperature. Otherwise will start heating Hotwater only if the
-    current temperature is even below a the minimal temperature setpoint.
-  </p>
+    <p>
+      This node Takes the current temperatures and parameters to calculate a
+      prognosis of the energy consumption of the next hours. Based on that it
+      adjusts the setpoint to a higher value if energy is cheap compared to later
+      periods
+    </p>
+    <p>
+      The set point will be sent as the payload in the output message. if the
+      current period is cheap, the Hotwater will start heating Hotwater up to a
+      maximal temperature. Otherwise will start heating Hotwater only if the
+      current temperature is even below a the minimal temperature setpoint.
+    </p>
 
-  <h3>Inputs</h3>
-  <p>
-    The input data must have a payload element (<b>msg.payload</b>). It can have
-    the following optional structure:
-  </p>
-  <ol type="1">
-    <ol>
+    <h3>Inputs</h3>
+    <p>
+      The input data must have a payload element (<b>msg.payload</b>). It can have
+      the following optional structure:
+    </p>
+    <ol type="1">
+      <ol>
+        <li>
+          <b>Price data from electric power supplier</b><br/>
+          Use this Query in <code>msg.payload</code> for the tibber-query node:<br/>
+          <span style="font-family:monospace">
+          {<br/> viewer {<br/>&nbsp;homes {<br/>&nbsp;&nbsp;currentSubscription{<br/>&nbsp;&nbsp;&nbsp;priceInfo{<br/>&nbsp;&nbsp;&nbsp;&nbsp;today {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/>&nbsp;&nbsp;&nbsp;&nbsp;tomorrow {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/> } } } } }<br/>
+          </span>
+      <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>)
+         node <br />
+          Example: The payload of tibber price data<br />
+          <dl class="message-properties">
+            <dt>
+              viewer.homes[0].currentSubscription.priceInfo.today| tomorrow
+              <span class="property-type"
+                >[{&quot;total&quot;:number, &quot;startsAt&quot;: string }]</span
+              >
+            </dt>
+            <dd>
+              Array of price data<br />
+              Example: { "total": 0.2494, "startsAt":
+              "2021-10-11T00:00:00.000+02:00" }
+            </dd>
+          </dl>
+        </li>
+      </ol>
       <li>
-        <b>Price data from electric power supplier</b><br/>
-        Use this Query in <code>msg.payload</code> for the tibber-query node:<br/>
-        <span style="font-family:monospace">
-        {<br/> viewer {<br/>&nbsp;homes {<br/>&nbsp;&nbsp;currentSubscription{<br/>&nbsp;&nbsp;&nbsp;priceInfo{<br/>&nbsp;&nbsp;&nbsp;&nbsp;today {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/>&nbsp;&nbsp;&nbsp;&nbsp;tomorrow {<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total startsAt }<br/> } } } } }<br/> 
-        </span>
-    <b>tibber</b>: Output of Tibber (<b>node-red-contrib-tibber-api</b>)
-       node <br />
-        Example: The payload of tibber price data<br />
+        <b>Data from Hotwater Device</b><br />
+        Every configuration parameter can be changed at runtime by sending it
+        within the config element.<br />
+        The following example shows a complete config input. All elements are
+        optional:<br />
         <dl class="message-properties">
-          <dt>
-            viewer.homes[0].currentSubscription.priceInfo.today| tomorrow
-            <span class="property-type"
-              >[{&quot;total&quot;:number, &quot;startsAt&quot;: string }]</span
-            >
+          <dt class="optional">
+            payload.currenttemperature
+            <span class="property-type">"num" as string </span>
           </dt>
-          <dd>
-            Array of price data<br />
-            Example: { "total": 0.2494, "startsAt":
-            "2021-10-11T00:00:00.000+02:00" }
-          </dd>
+          <dd>Current temperature of Hotwater</dd>
+        </dl>
+      </li>
+
+      <li>
+        <b>Time</b><br />
+        This will trigger the output. The inject node can be used to send the
+        time.<br />
+        This input is optional. The node sends outputs every period (when the
+        price has changed)
+        <dl class="message-properties">
+          <dt class="optional">
+            time
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd>Current Time to trigger output generation</dd>
         </dl>
       </li>
     </ol>
-    <li>
-      <b>Data from Hotwater Device</b><br />
-      Every configuration parameter can be changed at runtime by sending it
-      within the config element.<br />
-      The following example shows a complete config input. All elements are
-      optional:<br />
-      <dl class="message-properties">
-        <dt class="optional">
-          payload.currenttemperature
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd>Current temperature of Hotwater</dd>
-      </dl>
-    </li>
 
-    <li>
-      <b>Time</b><br />
-      This will trigger the output. The inject node can be used to send the
-      time.<br />
-      This input is optional. The node sends outputs every period (when the
-      price has changed)
-      <dl class="message-properties">
-        <dt class="optional">
-          time
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd>Current Time to trigger output generation</dd>
-      </dl>
-    </li>
-  </ol>
-
-  <h3>Outputs</h3>
-  <p>
-    The output contains a msg.payload element containing the setpoint for the
-    current state
-  </p>
-  <ol type="1">
-    <li>
-      <b>value</b>:<br />The node generates a schedule from the price data.<br />
-      Depending on the price for the current hour, the node will assign one of
-      the configured groups.<br />
-      The node calculates the group for the current time and sends the groups
-      output value to this element<br />
-      This element can be used to control attached devices via MQTT or other
-      interfaces
-    </li>
-  </ol>
-
-<h3>Details</h3>
-
-  <p>
-    A typical use case for this node is optimization of power consumption for
-    hot water generation using an electrical heat pump.
-  </p>
-
-  <p>
-    If the electric power is cheap, the setpoint is the configured maximum
-    temperature. It's more likely that the heatpump starts heating. Otherwise
-    and the heat pump will start hot water generation also if the tank
-    temperature is higher.<br />
-    If the price is high, the setpoint is the minimum temperature. The heatpump
-    will start only if it's below this temperature<br />
-    The following configuration parameters are available:<br/>
-    <dl class="message-properties">
-        <dt class="optional">
-          Period: Length of one Period
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd>Defines the length of a time range delivered by the energy provider.
-          1 hour is the default. </dd>
-      </dl>
-    <dl class="message-properties">
-        <dt class="optional">
-          Setback at night: Active during
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd>Defines the time range for the night. E.g. 22:00 - 05:00. Another (lower) set temperature can be specified. To prevent the heat pump from running at night</dd>
-      </dl>
-   <dl class="message-properties">
-        <dt class="optional">
-          Setback at night: Set temp.
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd>Set temperature during the night. A low temperature prevents the heat pump from running at night</dd>
-      </dl>
-  <dl class="message-properties">
-        <dt class="optional">
-          Room Temperature Range: Min/Max
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd>Minimal/maximal acceptable hot water temperature. The cost optimization happens in this temperature range.</dd>
-      </dl>
-  <dl class="message-properties">
-        <dt class="optional">
-          Cool Down and Heat Up Parameters: Cool Down Temp.
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd> The temperature difference the hot water temperature decrements when the heat pump is off.
-          This value will be used to calculate the number of periods required for heat up hot water during the day.
-        </dd>
-      </dl> 
-  <dl class="message-properties">
-        <dt class="optional">
-          Cool Down and Heat Up Parameters: Heat Up Temp.
-          <span class="property-type">"num" as string </span>
-        </dt>
-        <dd> The temperature the hot water temperature increments when the heat pump is on.
-          This value will be used to calculate the number of periods required for heating during the day.
-        </dd>
-      </dl>   
+    <h3>Outputs</h3>
+    <p>
+      The output contains a msg.payload element containing the setpoint for the
+      current state
     </p>
+    <ol type="1">
+      <li>
+        <b>value</b>:<br />The node generates a schedule from the price data.<br />
+        Depending on the price for the current hour, the node will assign one of
+        the configured groups.<br />
+        The node calculates the group for the current time and sends the groups
+        output value to this element<br />
+        This element can be used to control attached devices via MQTT or other
+        interfaces
+      </li>
+    </ol>
+
+  <h3>Details</h3>
+
+    <p>
+      A typical use case for this node is optimization of power consumption for
+      hot water generation using an electrical heat pump.
+    </p>
+
+    <p>
+      If the electric power is cheap, the setpoint is the configured maximum
+      temperature. It's more likely that the heatpump starts heating. Otherwise
+      and the heat pump will start hot water generation also if the tank
+      temperature is higher.<br />
+      If the price is high, the setpoint is the minimum temperature. The heatpump
+      will start only if it's below this temperature<br />
+      The following configuration parameters are available:<br/>
+      <dl class="message-properties">
+          <dt class="optional">
+            Period: Length of one Period
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd>Defines the length of a time range delivered by the energy provider.
+            1 hour is the default. </dd>
+        </dl>
+      <dl class="message-properties">
+          <dt class="optional">
+            Setback at night: Active during
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd>Defines the time range for the night. E.g. 22:00 - 05:00. Another (lower) set temperature can be specified. To prevent the heat pump from running at night</dd>
+        </dl>
+     <dl class="message-properties">
+          <dt class="optional">
+            Setback at night: Set temp.
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd>Set temperature during the night. A low temperature prevents the heat pump from running at night</dd>
+        </dl>
+    <dl class="message-properties">
+          <dt class="optional">
+            Room Temperature Range: Min/Max
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd>Minimal/maximal acceptable hot water temperature. The cost optimization happens in this temperature range.</dd>
+        </dl>
+    <dl class="message-properties">
+          <dt class="optional">
+            Cool Down and Heat Up Parameters: Cool Down Temp.
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd> The temperature difference the hot water temperature decrements when the heat pump is off.
+            This value will be used to calculate the number of periods required for heat up hot water during the day.
+          </dd>
+        </dl>
+    <dl class="message-properties">
+          <dt class="optional">
+            Cool Down and Heat Up Parameters: Heat Up Temp.
+            <span class="property-type">"num" as string </span>
+          </dt>
+          <dd> The temperature the hot water temperature increments when the heat pump is on.
+            This value will be used to calculate the number of periods required for heating during the day.
+          </dd>
+        </dl>
+      </p>
 </script>

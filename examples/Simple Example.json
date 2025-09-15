@@ -1,0 +1,148 @@
+[
+    {
+        "id": "600311ff830a52de",
+        "type": "tab",
+        "label": "Simple Example",
+        "disabled": false,
+        "info": "# Simple Example of Hotwater Node \nThis example shows the most basic use case for a Hotwater node.\nIt has no dependencies to other nodes.\n\n## Execution\n 1. Trigger by injecting \"Start here\"\n 2. This will send a price data output to the Hotwater Node. The price data is similar to the output of [node-red-contrib-tibber-api](https://flows.nodered.org/node/node-red-contrib-tibber-api)\n 3. After 100ms wait time, it triggers a payload containing a currenttemperature of 40°C\n 4. After another 100ms it triggers a payload containing a time (in milliseconds since 1970) within the range of the price data. This will trigger the generation of the hot water target temperature.\n\n## Comments\nThe last step (timestamp) is only required for testing purposes.\nIn a productive environment, the generation of the output will happen on every full hour.",
+        "env": []
+    },
+    {
+        "id": "6a4dca0e0f629940",
+        "type": "Hotwater",
+        "z": "600311ff830a52de",
+        "name": "Hotwater",
+        "periodlength": 1,
+        "nightstarthour": "22",
+        "nightendhour": "5",
+        "nighttargettemperature": "40",
+        "minimaltemperature": "45",
+        "maximaltemperature": "54",
+        "increasetemperatureperhour": "20",
+        "decreasetemperatureperhour": "0.4",
+        "x": 520,
+        "y": 160,
+        "wires": [
+            [
+                "2022171e82b6f5d0"
+            ]
+        ]
+    },
+    {
+        "id": "0b0d8d8a4880e3bf",
+        "type": "template",
+        "z": "600311ff830a52de",
+        "name": "input: Tibber data",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "plain",
+        "template": "{\n    \"viewer\": {\n      \"home\": {\n        \"currentSubscription\": {\n          \"priceInfo\": {\n            \"today\": [\n              { \"total\": 0.2494, \"startsAt\": \"2021-10-11T00:00:00.000+02:00\" },\n              { \"total\": 0.2209, \"startsAt\": \"2021-10-11T01:00:00.000+02:00\" },\n              { \"total\": 0.2099, \"startsAt\": \"2021-10-11T02:00:00.000+02:00\" },\n              { \"total\": 0.219, \"startsAt\": \"2021-10-11T03:00:00.000+02:00\" },\n              { \"total\": 0.2614, \"startsAt\": \"2021-10-11T04:00:00.000+02:00\" },\n              { \"total\": 0.4426, \"startsAt\": \"2021-10-11T05:00:00.000+02:00\" },\n              { \"total\": 0.5433, \"startsAt\": \"2021-10-11T06:00:00.000+02:00\" },\n              { \"total\": 0.5667, \"startsAt\": \"2021-10-11T07:00:00.000+02:00\" },\n              { \"total\": 0.5847, \"startsAt\": \"2021-10-11T08:00:00.000+02:00\" },\n              { \"total\": 0.5762, \"startsAt\": \"2021-10-11T09:00:00.000+02:00\" },\n              { \"total\": 0.5391, \"startsAt\": \"2021-10-11T10:00:00.000+02:00\" },\n              { \"total\": 0.5124, \"startsAt\": \"2021-10-11T11:00:00.000+02:00\" },\n              { \"total\": 0.504, \"startsAt\": \"2021-10-11T12:00:00.000+02:00\" },\n              { \"total\": 0.5057, \"startsAt\": \"2021-10-11T13:00:00.000+02:00\" },\n              { \"total\": 0.5066, \"startsAt\": \"2021-10-11T14:00:00.000+02:00\" },\n              { \"total\": 0.5136, \"startsAt\": \"2021-10-11T15:00:00.000+02:00\" },\n              { \"total\": 0.5143, \"startsAt\": \"2021-10-11T16:00:00.000+02:00\" },\n              { \"total\": 0.5306, \"startsAt\": \"2021-10-11T17:00:00.000+02:00\" },\n              { \"total\": 0.5534, \"startsAt\": \"2021-10-11T18:00:00.000+02:00\" },\n              { \"total\": 0.5511, \"startsAt\": \"2021-10-11T19:00:00.000+02:00\" },\n              { \"total\": 0.5491, \"startsAt\": \"2021-10-11T20:00:00.000+02:00\" },\n              { \"total\": 0.5485, \"startsAt\": \"2021-10-11T21:00:00.000+02:00\" },\n              { \"total\": 0.5481, \"startsAt\": \"2021-10-11T22:00:00.000+02:00\" },\n              { \"total\": 0.5218, \"startsAt\": \"2021-10-11T23:00:00.000+02:00\" }\n            ],\n            \"tomorrow\": [\n              { \"total\": 0.4533, \"startsAt\": \"2021-10-12T00:00:00.000+02:00\" },\n              { \"total\": 0.4196, \"startsAt\": \"2021-10-12T01:00:00.000+02:00\" },\n              { \"total\": 0.4037, \"startsAt\": \"2021-10-12T02:00:00.000+02:00\" },\n              { \"total\": 0.3829, \"startsAt\": \"2021-10-12T03:00:00.000+02:00\" },\n              { \"total\": 0.4555, \"startsAt\": \"2021-10-12T04:00:00.000+02:00\" },\n              { \"total\": 0.4721, \"startsAt\": \"2021-10-12T05:00:00.000+02:00\" },\n              { \"total\": 0.4903, \"startsAt\": \"2021-10-12T06:00:00.000+02:00\" },\n              { \"total\": 0.5028, \"startsAt\": \"2021-10-12T07:00:00.000+02:00\" },\n              { \"total\": 0.5163, \"startsAt\": \"2021-10-12T08:00:00.000+02:00\" },\n              { \"total\": 0.5264, \"startsAt\": \"2021-10-12T09:00:00.000+02:00\" },\n              { \"total\": 0.5346, \"startsAt\": \"2021-10-12T10:00:00.000+02:00\" },\n              { \"total\": 0.5224, \"startsAt\": \"2021-10-12T11:00:00.000+02:00\" },\n              { \"total\": 0.5071, \"startsAt\": \"2021-10-12T12:00:00.000+02:00\" },\n              { \"total\": 0.5045, \"startsAt\": \"2021-10-12T13:00:00.000+02:00\" },\n              { \"total\": 0.5024, \"startsAt\": \"2021-10-12T14:00:00.000+02:00\" },\n              { \"total\": 0.5038, \"startsAt\": \"2021-10-12T15:00:00.000+02:00\" },\n              { \"total\": 0.5118, \"startsAt\": \"2021-10-12T16:00:00.000+02:00\" },\n              { \"total\": 0.5111, \"startsAt\": \"2021-10-12T17:00:00.000+02:00\" },\n              { \"total\": 0.5108, \"startsAt\": \"2021-10-12T18:00:00.000+02:00\" },\n              { \"total\": 0.5055, \"startsAt\": \"2021-10-12T19:00:00.000+02:00\" },\n              { \"total\": 0.5042, \"startsAt\": \"2021-10-12T20:00:00.000+02:00\" },\n              { \"total\": 0.5259, \"startsAt\": \"2021-10-12T21:00:00.000+02:00\" },\n              { \"total\": 0.5282, \"startsAt\": \"2021-10-12T22:00:00.000+02:00\" },\n              { \"total\": 0.5252, \"startsAt\": \"2021-10-12T23:00:00.000+02:00\" }\n            ]\n          }\n        }\n      }\n    }\n}\n",
+        "output": "json",
+        "x": 270,
+        "y": 160,
+        "wires": [
+            [
+                "6a4dca0e0f629940",
+                "6462655b0d045538"
+            ]
+        ]
+    },
+    {
+        "id": "2022171e82b6f5d0",
+        "type": "debug",
+        "z": "600311ff830a52de",
+        "name": "output",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 710,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "e296c408597704f2",
+        "type": "inject",
+        "z": "600311ff830a52de",
+        "name": "Start here",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 80,
+        "y": 160,
+        "wires": [
+            [
+                "0b0d8d8a4880e3bf"
+            ]
+        ]
+    },
+    {
+        "id": "6462655b0d045538",
+        "type": "trigger",
+        "z": "600311ff830a52de",
+        "name": "currenttemperature: 40",
+        "op1": "",
+        "op2": "{\"currenttemperature\":40}",
+        "op1type": "nul",
+        "op2type": "json",
+        "duration": "100",
+        "extend": false,
+        "overrideDelay": false,
+        "units": "ms",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 280,
+        "y": 220,
+        "wires": [
+            [
+                "6a4dca0e0f629940",
+                "789b57ec59a1758a"
+            ]
+        ]
+    },
+    {
+        "id": "789b57ec59a1758a",
+        "type": "trigger",
+        "z": "600311ff830a52de",
+        "name": "datetime trigger 5:00",
+        "op1": "",
+        "op2": "{\"time\":1633917600000}",
+        "op1type": "nul",
+        "op2type": "json",
+        "duration": "100",
+        "extend": false,
+        "overrideDelay": false,
+        "units": "ms",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 280,
+        "y": 280,
+        "wires": [
+            [
+                "6a4dca0e0f629940"
+            ]
+        ]
+    }
+]

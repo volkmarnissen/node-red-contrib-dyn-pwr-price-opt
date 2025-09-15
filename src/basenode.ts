@@ -69,6 +69,9 @@ export class BaseNode<Config> {
             handled = handled || listener.func(node.node);
         });
       });
+
+      if( typeof msg.payload =='number' && msg.payload >1757940757214)
+        this.onTime(timeNow);
       if (timePayload != undefined) this.onTime(timePayload);
     } catch (e) {
       console.log(e);
