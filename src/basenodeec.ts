@@ -141,7 +141,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     try {
       this.processOutput(time);
     } catch (e: any) {
-      this.status({ fill: "red", shape: "dot", text: e.message });
+      this.status.bind(this)({ fill: "red", shape: "dot", text: e.message });
     }
   }
   scheduleTimerOnFullHours(time: number) {
