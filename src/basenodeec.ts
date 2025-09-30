@@ -1,5 +1,5 @@
 import { PriceData, TypeDescription } from "./@types/basenode";
-import { HeatingConfig } from "./@types/heating";
+import { BaseNodeECConfig } from "./@types/basenodeec";
 import { BaseNode } from "./basenode";
 import * as fs from "fs";
 import { EnergyConsumption, EnergyConsumptionInput } from "./energyconsumption";
@@ -9,79 +9,65 @@ import {
   priceConverterFilterRegexs,
 } from "./periodgenerator";
 import { debug } from "console";
+import { HeatingConfig } from "./@types/heating";
 const toleranceInMillis = 100;
 
-export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
+
+export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> extends BaseNode<T> {
   priceInfo: IpriceInfo | undefined = undefined;
-  outertemperature: number | undefined = undefined;
   currenttemperature: number | undefined = undefined;
+  hysteresis: number | undefined = 0;
   lastSetPoint: number | undefined = undefined;
   constructor(config: any, tConfig: TypeDescription, RED: any) {
     super(config, tConfig, RED);
+    priceConverterFilterRegexs.forEach((regex) => {
+      this.registerInputListener(regex, this.readPricePayload.bind(this));
+    });
+    this.registerInputListener(
+      /^payload$/g,
+      this.readHeatpumpPayload.bind(this),
+    );
     this.scheduleTimerOnFullHours(Date.now());
   }
   readPricePayload(payload: any): boolean {
     if (!this.config) throw new Error("config is not available.");
-    let periodlength = 1;
-    if (this.getPeriodLength() != undefined && this.getPeriodLength() != 0)
-      periodlength = this.getPeriodLength();
-    let rc = convertPrice(periodlength, payload);
+    let periodsPerHour = 1;
+    if (this.config.periodsperhour != undefined && this.config.periodsperhour != 0)
+      periodsPerHour = this.config.periodsperhour;
+    let rc = convertPrice(periodsPerHour, payload);
     if (undefined != rc) this.priceInfo = rc;
     // Allow other listeners to process the message
     return false;
   }
   readHeatpumpPayload(payload: any) {
     let rc = false;
-    if (payload.hasOwnProperty("outertemperature")) {
-      this.outertemperature = payload.outertemperature;
-      rc = true;
-    }
-
     if (payload.hasOwnProperty("currenttemperature")) {
       this.currenttemperature = payload.currenttemperature;
-      return true;
+      rc = true;
+    }
+    if (payload.hasOwnProperty("hysteresis")) {
+      this.hysteresis = payload.hysteresis;
+      rc = true;
     }
     return rc;
   }
   protected getEstimconsumptionperiods(currentTime: number): number {
     return 0;
   }
-  abstract getcheapestpriceoutput(): any;
-  abstract gethighestpriceoutput(): any;
-  abstract getNightTimeOutput(): any;
-  abstract getNightTimeStartHour(): number;
-  abstract getNightTimeEndHour(): number;
-  abstract getPeriodLength(): number;
-  abstract getCurrentTemperature(): number;
-  abstract getMinimalTemperature(): number;
-  abstract getMaximalTemperature(): number;
-  abstract getIncreaseTemperaturePerHour(): number;
-  abstract getDecreaseTemperaturePerHour();
-  abstract getDesignTemperature(): number;
-  abstract getOuterTemperature(): number;
+  abstract  getDecreaseTemperaturePerHour(): number;
   waitUntilNextHourTimer: any = undefined;
-  private buildEnergyConsumptionInput(
-    currentTime: number,
-  ): EnergyConsumptionInput {
+  protected buildEnergyConsumptionInput(): EnergyConsumptionInput {
     if (!this.priceInfo || !this.priceInfo.priceDatas || !this.priceInfo.prices)
       throw new Error("No Price Data available");
     let eci: EnergyConsumptionInput = {
       priceInfo: this.priceInfo,
-      nighttimeoutput: this.getNightTimeOutput(),
-      nighttimestarthour: this.getNightTimeStartHour(),
-      nighttimeendhour: this.getNightTimeEndHour(),
-      currenttemperature: this.getCurrentTemperature(),
-      minimaltemperature: this.getMinimalTemperature(),
-      maximaltemperature: this.getMaximalTemperature(),
-      increasetemperatureperhour: this.getIncreaseTemperaturePerHour(),
+      config: this.config,
       decreasetemperatureperhour: this.getDecreaseTemperaturePerHour(),
-      designtemperature: this.getDesignTemperature(),
-      outertemperature: this.getOuterTemperature(),
+      hysteresis: this.hysteresis,
+      currenttemperature: this.currenttemperature
     };
-    if (eci.currenttemperature == undefined)
+    if (this.currenttemperature == undefined)
       throw new Error("No current temperature in payload available");
-    if (eci.designtemperature != undefined && eci.outertemperature == undefined)
-      throw new Error("No outer temperature in payload available");
     if (eci.priceInfo == undefined || eci.priceInfo.priceDatas.length == 0)
       throw new Error("No price info available");
 
@@ -91,20 +77,22 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
   onTime(time: number): void {
     // on Time will always send a payload even in case of errors
     // This makes testing easier
-    if (!this.processOutput(time))
-      this.send([
-        {
-          payload: { error: "See node status" },
-        },
-      ]);
+    // if (!this.processOutput(time))
+    //   this.send([
+    //     {
+    //       payload: { error: "See node status" },
+    //     },
+    //   ]);
+    this.processOutput(time);
   }
+  
   processOutput(time: number): boolean {
     if (this.configInvalid) throw new Error(this.configInvalid);
-    let currentHour = new Date(time).getHours();
     let ec: EnergyConsumption;
     try {
-      let eci = this.buildEnergyConsumptionInput(time);
+      let eci = this.buildEnergyConsumptionInput();
       ec = new EnergyConsumption(eci);
+      ec.checkConfig();
     } catch (e) {
       this.status.bind(this)({
         fill: "red",
@@ -113,31 +101,7 @@ export abstract class BaseNodeEnergyConsumption<T> extends BaseNode<T> {
       });
       return false;
     }
-
     let value = ec.getOutputValue(time);
-    if (
-      ec.isNightTime(time) &&
-      value == (this.config as HeatingConfig).minimaltemperature
-    )
-      value = (this.config as HeatingConfig).nighttargettemperature;
-    let s = "";
-    ec.schedule.forEach((e) => {
-      s += new Date(e.start).getHours().toString() + " " + e.returnValue + ", ";
-    });
-    fs.appendFile(
-      "/share/node-red-contrib-dyn-pwr-price-opt.log",
-      new Date(time).toLocaleString() +
-        " " +
-        (this.config as HeatingConfig).name +
-        ": " +
-        value +
-        (this.lastSetPoint == value ? "" : " changed") +
-        s +
-        "\n",
-      (err) => {
-        /* Ignore errors */
-      },
-    );
     if (value) {
       this.status.bind(this)({
         fill: "green",

@@ -1,76 +1,56 @@
 import { PriceData, TypeDescription } from "./@types/basenode";
 import { HeatingConfig } from "./@types/heating";
 import { BaseNodeEnergyConsumption } from "./basenodeec";
+import { EnergyConsumptionInput } from "./energyconsumption";
 import { priceConverterFilterRegexs } from "./periodgenerator";
 const tConfig: TypeDescription = {
   typeFields: [],
   numberFields: [
-    { name: "periodlength", required: false },
+    { name: "periodsperhour", required: false },
     { name: "nightstarthour", required: false },
     { name: "nightendhour", required: false },
-    { name: "nighttargettemperature", required: false },
+    { name: "nighttemperature", required: false },
     { name: "minimaltemperature", required: true },
     { name: "maximaltemperature", required: true },
     { name: "increasetemperatureperhour", required: true },
     { name: "decreasetemperatureperhour", required: true },
-    { name: "designtemperature", required: false },
+    { name: "designtemperature", required: false }
   ],
   booleanFields: [],
 };
-
-export interface ScheduleEntry extends PriceData {
-  returnValue?: any;
-}
+const noheattemperature = 21;
 
 export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
-  getPeriodLength(): number {
-    return this.config.periodlength;
-  }
-  getCurrentTemperature(): number {
-    return this.currenttemperature;
-  }
-  getMinimalTemperature(): number {
-    return this.config.minimaltemperature;
-  }
-  getMaximalTemperature(): number {
-    return this.config.maximaltemperature;
-  }
-  getIncreaseTemperaturePerHour(): number {
-    return this.config.increasetemperatureperhour;
-  }
+ outertemperature: number | undefined = undefined;
+ 
   getDecreaseTemperaturePerHour() {
-    return this.config.decreasetemperatureperhour;
+   // 0 ^= noheattemperature 
+   // this.config.decreasetemperatureperhour ^= this.config.designtemperature
+   // ? ^= this.outertemperature 
+   // 0 = decreasetemperatureperhour * (outertemperature - noheatemperature) / ( designtemperature - noheattemperature)
+   this.outertemperature - this.config.designtemperature
+    let temp =  this.config.decreasetemperatureperhour * (this.outertemperature - noheattemperature)/(this.config.designtemperature - noheattemperature);
+    if(temp <0)
+      return 0;
+    return temp;
   }
-  getcheapestpriceoutput() {
-    return this.config.maximaltemperature;
-  }
-  gethighestpriceoutput() {
-    return this.config.minimaltemperature;
-  }
-  getNightTimeOutput() {
-    return this.config.nighttargettemperature;
-  }
-  getNightTimeStartHour(): number {
-    return this.config.nightstarthour;
-  }
-  getNightTimeEndHour(): number {
-    return this.config.nightendhour;
-  }
-  getDesignTemperature(): number | undefined {
-    return this.config.designtemperature;
-  }
-  getOuterTemperature(): number | undefined {
-    return this.outertemperature;
-  }
+  readHeatpumpPayload(payload: any) {
+    let rc = super.readHeatpumpPayload(payload);
+    if (payload.hasOwnProperty("outertemperature")) {
+      this.outertemperature = payload.outertemperature;
+      rc = true;
+    }
+    return rc;
+  };
+   protected buildEnergyConsumptionInput(): EnergyConsumptionInput {
+      if ( this.outertemperature == undefined)
+        throw new Error("No outer temperature in payload available");
+      let eci = super.buildEnergyConsumptionInput();
+      return eci;
+    }
   constructor(config: any, RED: any) {
     super(config, tConfig, RED);
-    priceConverterFilterRegexs.forEach((regex) => {
-      this.registerInputListener(regex, this.readPricePayload.bind(this));
-    });
-    this.registerInputListener(
-      /^payload$/g,
-      this.readHeatpumpPayload.bind(this),
-    );
+
   }
 }
 export default function register(RED: any): any {

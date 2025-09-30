@@ -1,58 +1,14 @@
 // tests/calculator.spec.tx
 //import { expect, it, describe } from "@jest/globals";
-import { resolveCaa } from "dns";
-import { registerNodeForTest, ScheduleEntry } from "../src/heating";
+import { registerNodeForTest } from "../src/heating";
 import powerPriceOptimizer from "../src/heating";
 import { RED } from "./RED";
-import fs from "fs";
 import { NodeTestHelper } from "node-red-node-test-helper";
-import { join } from "path";
 
 import { PriceSources } from "../src/periodgenerator";
-import { PriceData } from "../src/@types/basenode";
-import { HeatingConfig } from "../src/@types/heating";
-import { on } from "events";
+import { buildPriceData, config, executeFlow, getTestTime, OnOutputFunction } from "./executeFlow";
 
-const config: HeatingConfig = {
-  name: "Heating",
-  periodlength: 1,
-  nightstarthour: 22,
-  nightendhour: 5,
-  nighttargettemperature: 12,
-  minimaltemperature: 20,
-  maximaltemperature: 22,
-  increasetemperatureperhour: 0.2,
-  decreasetemperatureperhour: 0.3,
-  designtemperature: -12,
-};
-const cheapHour: number = 4;
-const expensiveHour = 18;
-let priceDataPostfix = ":00:00.000+02:00";
-let datePrefixes: string[] = ["2021-10-10T", "2021-10-11T"];
-let priceDataTemplate: number[] = [0.2, 0.24, 0.26, 0.23, 0.19, 0.22];
-var myformat = new Intl.NumberFormat("en-US", {
-  minimumIntegerDigits: 2,
-  minimumFractionDigits: 0,
-});
-function buildPriceData(): any {
-  var rc: any[] = [];
-  for (var prefix of datePrefixes)
-    for (var i = 0; i < 4; i++)
-      for (var j = 0; j < 6; j++) {
-        var h = i * 6 + j;
-        var pd = {
-          value: priceDataTemplate[j],
-          start: Date.parse(prefix + myformat.format(h) + priceDataPostfix),
-        };
-        rc.push(pd);
-      }
-  return rc;
-}
-function getTestTime(hour: number): number {
-  return Date.parse(
-    "2021-10-11T" + String(hour).padStart(2, "0") + ":00:00.000+02:00",
-  );
-}
+
 describe("Standalone Tests", () => {
   it("Generate schedule from payload", () => {
     var classType = registerNodeForTest(RED);
@@ -101,81 +57,10 @@ describe("Standalone Tests", () => {
     };
   });
 });
-type OnOutputFunction = {
-  fct: (msg: any) => void;
-  payload?: any;
-  hour?: number;
-};
 
-function buildPayload(onOutput: OnOutputFunction): any {
-  if (onOutput.payload != undefined) return onOutput;
-  if (onOutput.hour != undefined)
-    return { payload: { time: getTestTime(onOutput.hour) } };
-}
 
-function executeFlow(
-  helper: any,
-  attrs: any,
-  onOutput: OnOutputFunction[],
-): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    try {
-      let cfg = Object.assign(config, attrs);
 
-      Object.keys(cfg).forEach((key) => {
-        if (cfg[key] === undefined) delete cfg[key];
-        else cfg[key] = cfg[key].toString();
-      });
-      cfg.name = "test name";
-      cfg.id = "heating";
-      cfg.type = "Heating";
-      let output = [["output"]];
-      cfg.wires = output;
 
-      let flow: any[] = [];
-      flow.push(cfg);
-      flow.push({ id: "output", type: "helper" });
-      helper.load(powerPriceOptimizer, flow, function () {
-        try {
-          const powerPriceOptimizerNode = helper.getNode("heating");
-          expect(powerPriceOptimizerNode).not.toBeNull();
-          const outputNode = helper.getNode("output");
-          expect(outputNode).not.toBeNull();
-          let callCount = 0;
-          outputNode.on("input", (msg: any) => {
-            expect(msg.payload.error).not.toBeDefined();
-            onOutput[callCount].fct(msg);
-            ++callCount;
-            if (onOutput.length > callCount) {
-              powerPriceOptimizerNode.receive(
-                buildPayload(onOutput[callCount]),
-              );
-            } else resolve("OK"); // No further call
-          });
-
-          let data = fs.readFileSync(
-            "test/data/tibber-prices-single-home.json",
-            {
-              encoding: "utf-8",
-            },
-          );
-          let msg = {
-            payload: Object.assign(
-              JSON.parse(data).payload,
-              buildPayload(onOutput[0]).payload,
-            ),
-          };
-          powerPriceOptimizerNode.receive(msg);
-        } catch (e) {
-          console.log(e);
-          reject(e);
-        }
-      });
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
 describe("Node Server tests", () => {
   let helper = new NodeTestHelper();
   helper.init(require.resolve("node-red"));
@@ -197,14 +82,14 @@ describe("Node Server tests", () => {
       },
     ];
     Object.keys(config).forEach((k) => {
-      flow[0][k] = config[k];
+      (flow[0] as any)[k] = (config as any)[k];
     });
-    flow[0]["name"] = "test name";
+    (flow[0] as any)["name"] = "test name";
     helper.load(powerPriceOptimizer, flow).then(() => {
       let n1 = helper.getNode("n1");
       expect(n1["name"]).toBeDefined();
       expect(n1["name"]).toBe("test name");
-      expect(n1["config"].designtemperature).toBe(-12);
+      expect((n1 as any)["config"].designtemperature).toBe(-12);
       done();
     });
   });
@@ -231,52 +116,14 @@ describe("Node Server tests", () => {
               outertemperature: 15,
               time: getTestTime(5),
             },
+            type:"Heating"
           },
         ],
       ),
     ).resolves.toBe("OK");
   });
 
-  it("Hotwater: low price => maximal temperature  ", function () {
-    return executeFlow(
-      helper,
-      {
-        minimaltemperature: "45",
-        maximaltemperature: "57",
-        designtemperature: undefined,
-        nightstarthour: undefined,
-      },
-      [
-        {
-          hour: cheapHour,
-          fct: function (msg) {
-            expect(msg.payload).toBe(57);
-          },
-          payload: { currenttemperature: 48, time: getTestTime(cheapHour) },
-        },
-      ],
-    );
-  });
-  it("Hotwater: high price => minimal temperature  ", function () {
-    return executeFlow(
-      helper,
-      {
-        minimaltemperature: "45",
-        maximaltemperature: "57",
-        designtemperature: undefined,
-        nightstarthour: undefined,
-      },
-      [
-        {
-          hour: 18,
-          fct: function (msg) {
-            expect(msg.payload).toBe(45);
-          },
-          payload: { currenttemperature: 22, time: getTestTime(18) },
-        },
-      ],
-    );
-  });
+ 
   it(" Heating: high price => minimal temperature", function () {
     return executeFlow(
       helper,
@@ -292,7 +139,8 @@ describe("Node Server tests", () => {
           fct: function (msg) {
             expect(msg.payload as any).toBe(21);
           },
-          payload: { currenttemperature: 22, time: getTestTime(7) },
+          payload: { currenttemperature: 22, time: getTestTime(7), outertemperature: 12 },
+            type:"Heating"
         },
       ],
     );
@@ -304,10 +152,10 @@ describe("Node Server tests", () => {
         minimaltemperature: "21",
         maximaltemperature: "23",
         decreasetemperatureperhour: "0.1",
-        increasetemperatureperhour: "4",
+        increasetemperatureperhour: "0.5",
         nightstarthour: "22",
         nightendhour: "9",
-        nighttargettemperature: "12",
+        nighttemperature: "14",
       },
       [
         {
@@ -318,15 +166,16 @@ describe("Node Server tests", () => {
           payload: {
             currenttemperature: 15,
             outertemperature: -10,
-            time: getTestTime(4),
+            time: getTestTime(4)
           },
+          type:"Heating"
         },
       ],
     );
   });
   it("Night high price => night temperature", function () {
     let helper2 = new NodeTestHelper();
- 
+
     return executeFlow(
       helper2,
       {
@@ -336,20 +185,21 @@ describe("Node Server tests", () => {
         increasetemperatureperhour: "0.2",
         nightstarthour: "22",
         nightendhour: "6",
-        nighttargettemperature: "12",
+        nighttemperature: "19",
       },
       [
         {
           payload: {
-            currenttemperature: 15,
+            currenttemperature: 19.5,
             outertemperature: -10,
-            time: getTestTime(5),
+            time: getTestTime(23),
           },
-          hour: 5,
+          hour: 23,
           fct: function (msg) {
-            console.log("In onInput " + msg.payload)
-            expect(msg.payload as any).toBe(12);
+            console.log("In onInput " + msg.payload);
+            expect(msg.payload as any).toBe(19);
           },
+          type:"Heating"
         },
       ],
     );

@@ -1,11 +1,11 @@
-import { BaseNodeECConfig } from "./basenodeec";
-
-export interface HotwaterConfig extends BaseNodeECConfig {
+export interface BaseNodeECConfig {
   name: string;
   nightstarthour: number;
   nightendhour: number;
+  nighttemperature: number;
   minimaltemperature: number;
   maximaltemperature: number;
   increasetemperatureperhour: number;
   decreasetemperatureperhour: number;
- }
+  periodsperhour:number;
+}

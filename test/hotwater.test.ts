@@ -2,11 +2,10 @@
 //import { expect, it, describe } from "@jest/globals";
 
 import powerPriceOptimizer from "../src/hotwater";
+import { cheapHour, executeFlow, getTestTime } from "./executeFlow";
 import { RED } from "./RED";
 
 import { NodeTestHelper } from "node-red-node-test-helper";
-
-import { Mutex } from "async-mutex";
 
 let helper = new NodeTestHelper();
 helper.init(require.resolve("node-red"));
@@ -42,4 +41,49 @@ describe("Node Server tests", () => {
       done();
     });
   });
+   it("Hotwater: low price => maximal temperature  ", function () {
+      return executeFlow(
+        helper,
+        {
+          minimaltemperature: "45",
+          maximaltemperature: "57",
+          designtemperature: undefined,
+          nightstarthour: undefined,
+          increasetemperatureperhour:0.5
+        },
+        [
+          {
+            hour: cheapHour,
+            fct: function (msg) {
+              expect(msg.payload).toBe(57);
+            },
+            payload: { currenttemperature: 48, time: getTestTime(cheapHour) },
+            type:"Hotwater"
+          },
+        ],
+        "Hotwater"
+      );
+    });
+    it("Hotwater: high price => minimal temperature  ", function () {
+      return executeFlow(
+        helper,
+        {
+          minimaltemperature: "45",
+          maximaltemperature: "57",
+          designtemperature: undefined,
+          nightstarthour: undefined,
+        },
+        [
+          {
+            hour: 18,
+            fct: function (msg) {
+              expect(msg.payload).toBe(45);
+            },
+            payload: { currenttemperature: 22, time: getTestTime(18) },
+            type:"Hotwater"
+          },
+        ],
+        "Hotwater"
+      );
+    });
 });

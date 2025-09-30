@@ -1,5 +1,5 @@
-import { HotwaterConfig } from "./hotwater";
+import { BaseNodeECConfig } from "./basenodeec";
 
-export interface HeatingConfig extends HotwaterConfig {
+export interface HeatingConfig extends BaseNodeECConfig {
   designtemperature?: number;
 }

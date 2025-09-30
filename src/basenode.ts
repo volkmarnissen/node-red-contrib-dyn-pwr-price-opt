@@ -70,7 +70,7 @@ export class BaseNode<Config> {
         });
       });
 
-      if( typeof msg.payload =='number' && msg.payload >1757940757214)
+      if (typeof msg.payload == "number" && msg.payload > 1757940757214)
         this.onTime(timeNow);
       if (timePayload != undefined) this.onTime(timePayload);
     } catch (e) {
