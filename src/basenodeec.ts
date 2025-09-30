@@ -36,6 +36,8 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       periodsPerHour = this.config.periodsperhour;
     let rc = convertPrice(periodsPerHour, payload);
     if (undefined != rc) this.priceInfo = rc;
+    this.sendNodeRedStatus( "Prices updated");
+     
     // Allow other listeners to process the message
     return false;
   }
@@ -48,6 +50,9 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     if (payload.hasOwnProperty("hysteresis")) {
       this.hysteresis = payload.hysteresis;
       rc = true;
+    }
+    if(rc){
+      this.sendNodeRedStatus( "Heatpump Information updated");
     }
     return rc;
   }
@@ -85,7 +90,13 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     //   ]);
     this.processOutput(time);
   }
-  
+  sendNodeRedStatus(message:string, color:string="green"){
+    this.status.bind(this)({
+    fill:color,
+        shape: "dot",
+        text: message} ) 
+  }
+
   processOutput(time: number): boolean {
     if (this.configInvalid) throw new Error(this.configInvalid);
     let ec: EnergyConsumption;
@@ -94,11 +105,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       ec = new EnergyConsumption(eci);
       ec.checkConfig();
     } catch (e) {
-      this.status.bind(this)({
-        fill: "red",
-        shape: "dot",
-        text: e.message  + " " + new Date(time).toLocaleTimeString(),
-      });
+      this.sendNodeRedStatus( e.message  + " " + new Date(time).toLocaleTimeString(), "red");
       return false;
     }
     let value = ec.getOutputValue(time);
