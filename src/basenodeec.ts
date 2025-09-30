@@ -97,7 +97,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       this.status.bind(this)({
         fill: "red",
         shape: "dot",
-        text: e.message,
+        text: e.message  + " " + new Date(time).toLocaleTimeString(),
       });
       return false;
     }
