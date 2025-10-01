@@ -172,7 +172,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       let nextFullHourTime = nextFullHour.getTime();
       setTimeout(() => {
         this.scheduleTimerOnFullHours(nextFullHour.getTime());
-        this.onFullHour();
+        this.onFullHour.bind(this)();
       }, nextFullHourTime - time);
     }
   }
