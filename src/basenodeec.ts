@@ -1,15 +1,12 @@
-import { PriceData, TypeDescription } from "./@types/basenode";
+import { TypeDescription } from "./@types/basenode";
 import { BaseNodeECConfig } from "./@types/basenodeec";
 import { BaseNode } from "./basenode";
-import * as fs from "fs";
 import { EnergyConsumption, EnergyConsumptionInput } from "./energyconsumption";
 import {
   convertPrice,
   IpriceInfo,
   priceConverterFilterRegexs,
 } from "./periodgenerator";
-import { debug } from "console";
-import { HeatingConfig } from "./@types/heating";
 const toleranceInMillis = 100;
 
 
@@ -18,6 +15,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
   currenttemperature: number | undefined = undefined;
   hysteresis: number | undefined = 0;
   lastSetPoint: number | undefined = undefined;
+  lastSetPointTime: number | undefined = undefined;
   constructor(config: any, tConfig: TypeDescription, RED: any) {
     super(config, tConfig, RED);
     priceConverterFilterRegexs.forEach((regex) => {
@@ -36,10 +34,23 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       periodsPerHour = this.config.periodsperhour;
     let rc = convertPrice(periodsPerHour, payload);
     if (undefined != rc) this.priceInfo = rc;
-    this.sendNodeRedStatus( "Prices updated");
-     
+    let st = this.buildNodeRedStatus();
+    this.sendNodeRedStatus(st.text, st.color);
+      
     // Allow other listeners to process the message
     return false;
+  }
+  buildNodeRedStatus():{color:"green"|"yellow"|"red", text:string}{
+    let pricesAvailable = (this && this.priceInfo && this.priceInfo.prices && this.priceInfo.priceDatas.length > 0);
+    let tempAvailable = (this && this.currenttemperature != undefined); 
+    let hysteresisAvailable = (this && this.hysteresis != undefined);
+    let lastSetPointTimeStr = this.lastSetPointTime ? new Date(this.lastSetPointTime).toLocaleTimeString() : "never";
+    return {
+      color: (pricesAvailable && tempAvailable && hysteresisAvailable) ? this.lastSetPointTime ? "green":"yellow" : "red",
+      text: "Last Update: " + lastSetPointTimeStr + (pricesAvailable ?  "" : "No Prices. ") +
+            (tempAvailable ? "" : "No temperature. ") +
+            (hysteresisAvailable ? "" : "No hysteresis.")
+    }
   }
   readHeatpumpPayload(payload: any) {
     let rc = false;
@@ -51,9 +62,8 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       this.hysteresis = payload.hysteresis;
       rc = true;
     }
-    if(rc){
-      this.sendNodeRedStatus( "Heatpump Information updated");
-    }
+    let st = this.buildNodeRedStatus();
+    this.sendNodeRedStatus(st.text, st.color);
     return rc;
   }
   protected getEstimconsumptionperiods(currentTime: number): number {
@@ -88,13 +98,23 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     //       payload: { error: "See node status" },
     //     },
     //   ]);
-    this.processOutput(time);
+    try{
+      this.processOutput(time);
+    } catch (e) {
+        this.sendNotification( e.message,"error")
+        this.sendNodeRedStatus( e.message , "red");
+    }
+
   }
   sendNodeRedStatus(message:string, color:string="green"){
-    this.status.bind(this)({
-    fill:color,
+    if(this && this.status)
+      this.status.bind(this)({
+        fill:color,
         shape: "dot",
         text: message} ) 
+    else {
+            this.log("Unable to set status for error" + message)
+        }
   }
 
   processOutput(time: number): boolean {
@@ -110,12 +130,10 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     }
     let value = ec.getOutputValue(time);
     if (value) {
-      this.status.bind(this)({
-        fill: "green",
-        shape: "dot",
-        text: "Last Update at " + new Date(time).toLocaleTimeString(),
-      });
-      try {
+        this.lastSetPointTime = time;
+        let st = this.buildNodeRedStatus();
+        this.sendNodeRedStatus(st.text, st.color);
+        this.log("Setpoint " + value + " at " + new Date(time).toLocaleTimeString() +(value != this.lastSetPoint ? " changed":" unchanged"));
         if (value != this.lastSetPoint) {
           if (typeof value === "number")
             this.send([
@@ -128,19 +146,10 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
           this.lastSetPoint = value;
         }
         return true;
-      } catch (e) {
-        this.status.bind(this)({
-          fill: "red",
-          shape: "dot",
-          text: e.message,
-        });
-      }
+     
     } else
-      this.status.bind(this)({
-        fill: "red",
-        shape: "dot",
-        text: "No Schedule available",
-      });
+      this.sendNodeRedStatus("No Schedule available","red")
+
     return false;
   }
 
@@ -148,7 +157,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     try {
       this.processOutput(time);
     } catch (e: any) {
-      this.status.bind(this)({ fill: "red", shape: "dot", text: e.message });
+      this.sendNodeRedStatus( e.message , "red");
     }
   }
   scheduleTimerOnFullHours(time: number) {
@@ -159,7 +168,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       nextFullHour.getMinutes() == 0
     ) {
       this.waitUntilNextHourTimer = setInterval(
-        this.onFullHour,
+        this.onFullHour.bind(this),
         1000 * 60 * 60,
       );
       this.onFullHour(time);
@@ -171,7 +180,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
       nextFullHour.setMinutes(0);
       let nextFullHourTime = nextFullHour.getTime();
       setTimeout(() => {
-        this.scheduleTimerOnFullHours(nextFullHour.getTime());
+        this.scheduleTimerOnFullHours.bind(this)(nextFullHour.getTime());
         this.onFullHour.bind(this)();
       }, nextFullHourTime - time);
     }

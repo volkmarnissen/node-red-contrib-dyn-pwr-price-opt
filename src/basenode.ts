@@ -14,6 +14,7 @@ export class BaseNode<Config> {
   protected configInvalid: string = undefined;
   private on: (event: string, handler: Function) => void;
   protected send: (outputs: any[]) => void;
+  protected log: (message: string) => void;
   protected status: (options: {
     fill: string;
     shape: string;
@@ -30,7 +31,7 @@ export class BaseNode<Config> {
     try {
       this.overwriteConfigProperties(this.config, config);
     } catch (e) {
-      console.log(e.message);
+      this.log(e.message);
     }
     this.on("input", this.onInput.bind(this));
     this.on("close", this.onClose.bind(this));
@@ -74,11 +75,13 @@ export class BaseNode<Config> {
         this.onTime(timeNow);
       if (timePayload != undefined) this.onTime(timePayload);
     } catch (e) {
-      console.log(e);
+      this.log(e);
       throw e;
     }
   }
-
+  sendNotification(message:string, type:"error"|"warning"|"info"="info" ){
+    this.RED.notify(message, { type: type, timeout: 10000 });
+  }
   private onConfigLocal(config: any): void {
     this.overwriteConfigProperties(this.config, config);
     this.onConfig();

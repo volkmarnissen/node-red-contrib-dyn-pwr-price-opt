@@ -42,6 +42,16 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
     }
     return rc;
   };
+  buildNodeRedStatus():{color:"green"|"yellow"|"red", text:string}{
+    let baseStatus = super.buildNodeRedStatus();
+    let outerTempAvailable = (this && this.outertemperature != undefined); 
+    return {
+      color: (baseStatus.color in ["green", "yellow"] && outerTempAvailable) ? baseStatus.color : "red",
+      text: baseStatus.text +
+            (outerTempAvailable ? "":"No Outer Temp.")
+    }
+  } 
+
    protected buildEnergyConsumptionInput(): EnergyConsumptionInput {
       if ( this.outertemperature == undefined)
         throw new Error("No outer temperature in payload available");

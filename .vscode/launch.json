@@ -13,6 +13,7 @@
             "<node_internals>/**"
         ],
         "sourceMaps": true, 
+        "console": "integratedTerminal",
         "outFiles": [
             "${workspaceFolder}/dist/**/*.js",
             "!**/node_modules/**"
