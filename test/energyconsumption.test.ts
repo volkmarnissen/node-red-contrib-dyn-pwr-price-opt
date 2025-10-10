@@ -4,7 +4,8 @@ import {
   EnergyConsumption,
   EnergyConsumptionInput,
 } from "../src/energyconsumption";
-import { PriceSources } from "../src/periodgenerator";
+import { IpriceInfo, PriceSources } from "../src/periodgenerator";
+import { getPriceInfo, readPriceData } from "./executeFlow";
 
 let hotwaterConfig:BaseNodeECConfig = {
     name:"hotwater",
@@ -15,14 +16,14 @@ let hotwaterConfig:BaseNodeECConfig = {
     maximaltemperature: 48,
     increasetemperatureperhour: 0,
     decreasetemperatureperhour: 0,
-    periodsperhour: 1
+    tolerance: 0.02
   }
 
 let eciHotwater: EnergyConsumptionInput = {
   priceInfo: {
     source: PriceSources.tibber,
     priceDatas: [],
-    prices: { starttime: 2, endtime: 3, periodlength: 1 },
+    prices: { starttime: 2, endtime: 3, periodsperhour: 1 },
   },
   config: hotwaterConfig,
   decreasetemperatureperhour: 0,
@@ -43,35 +44,74 @@ function getTestTime(hour: number): number {
     "2021-10-11T" + String(hour).padStart(2, "0") + ":00:00.000+02:00",
   );
 }
-it("Hotwater: getEstimconsumptionPeriods at nighttime", () => {
+let priceInfo = {
+      source: PriceSources.other,
+      priceDatas: readPriceData(),
+    };
+it("getStartTime 4 periods per hour ", () => {
+  eciHotwater.currenttemperature = 42;
+  eciHotwater.priceInfo.prices.periodsperhour = 4;
+
+  let ec = new EnergyConsumption(eciHotwater);
+  let tt = getTestTime(2)
+  let td = new Date(tt);
+  expect(new Date(ec["getStartTime"](tt)).getMinutes()).toBe(0);
+  td.setMinutes(14); tt = td.getTime();
+  expect(new Date(ec["getStartTime"](tt)).getMinutes()).toBe(15);
+  td.setMinutes(15);tt = td.getTime();
+  expect(new Date(ec["getStartTime"](tt)).getMinutes()).toBe(15);
+  td.setMinutes(16);tt = td.getTime();
+  expect(new Date(ec["getStartTime"](tt)).getMinutes()).toBe(30);
+  td.setMinutes(29);tt = td.getTime();
+  expect(new Date(ec["getStartTime"](tt)).getMinutes()).toBe(30);;
+
+});
+
+
+it("Hotwater: getNumberOfHeatingPeriods", () => {
+  eciHotwater.decreasetemperatureperhour = 0.2;
+  eciHotwater.config.increasetemperatureperhour = 0.8;
+  eciHotwater.currenttemperature = 42;
+  let ec = new EnergyConsumption(eciHotwater);
+  ec.checkConfig();
+  expect(ec.getNumberOfHeatingPeriods( 10 )).toBe(2);
+});
+
+it("Hotwater: getOutputValue at daytimec curr temp < minimal temp=> immediate heating", () => {
   eciHotwater.decreasetemperatureperhour = 0.2;
   eciHotwater.currenttemperature = 42;
   let ec = new EnergyConsumption(eciHotwater);
   ec.checkConfig();
-  // TODO expect(ec.getEstimconsumptionPeriods(getTestTime(2))).toBe(10);
-});
-
-it("Hotwater: getEstimconsumptionPeriods at daytimec curr temp < minimal temp=> immediate heating", () => {
-  eciHotwater.decreasetemperatureperhour = 0.2;
-  eciHotwater.currenttemperature = 42;
-  let ec = new EnergyConsumption(eciHotwater);
-  ec.checkConfig();
-  //TODO expect(ec.getEstimconsumptionPeriods(getTestTime(7))).toBe(0);
+  expect(ec.getOutputValue(getTestTime(7))).toBe(heatingConfig.minimaltemperature);
 });
 
 
-it("Heating: getEstimconsumptionPeriods at nighttime", () => {
+it("Heating: getOutputValue at nighttime cheap price", () => {
   eciHeating.decreasetemperatureperhour = 0.2;
   eciHeating.currenttemperature = 22;
   let ec = new EnergyConsumption(eciHeating);
   ec.checkConfig();
-  //TODO expect(ec.getEstimconsumptionPeriods(getTestTime(2))).toBe(6);
+  expect(ec.getOutputValue(getTestTime(2))).toBe(heatingConfig.minimaltemperature);
 });
 
-it("Heating: getEstimconsumptionPeriods at daytimec curr temp > minimal temp=> calculate periods", () => {
+it("Heating: getOutputValue at daytimec curr temp > minimal temp=> calculate periods", () => {
   eciHeating.decreasetemperatureperhour = 0.2;
   eciHeating.currenttemperature = 22;
+  eciHeating.priceInfo = (getPriceInfo() as IpriceInfo);
   let ec = new EnergyConsumption(eciHeating);
   ec.checkConfig();
-  //TODO expect(ec.getEstimconsumptionPeriods(getTestTime(7))).toBe(6);
+  expect(ec.getOutputValue(getTestTime(7))).toBe(heatingConfig.minimaltemperature);
+});
+
+it("Heating: setValueRange with Tolerance", () => {
+  eciHeating.decreasetemperatureperhour = 0.2;
+  eciHeating.currenttemperature = 22;
+  eciHeating.priceInfo = (getPriceInfo() as IpriceInfo);
+  eciHeating.config.tolerance  = 0.02
+  let ec = new EnergyConsumption(eciHeating);
+  ec.checkConfig();
+  ec.setValueRanges(eciHeating.priceInfo.priceDatas,48)
+  let count =0;
+  eciHeating.priceInfo.priceDatas.forEach(p=>{if(p.value == 0) count++})
+  expect( count).toBeGreaterThan(1);
 });

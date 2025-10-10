@@ -1,10 +1,11 @@
 import { HeatingConfig } from "../src/@types/heating";
 import * as fs from 'fs'
+import { convertPrice, IpriceInfo } from "../src/periodgenerator";
 import powerPriceOptimizerHotwater from "../src/hotwater";
 import powerPriceOptimizerHeating from "../src/heating";
 export const config: HeatingConfig = {
   name: "Heating",
-  periodsperhour: 1,
+  tolerance: 0.02,
   nightstarthour: 22,
   nightendhour: 5,
   nighttemperature: 12,
@@ -56,7 +57,18 @@ export type OnOutputFunction = {
   hour?: number;
   type:string;
 };
-
+export function readPriceData():any{
+            let data = fs.readFileSync(
+            "test/data/tibber-prices-single-home.json",
+            {
+              encoding: "utf-8",
+            },
+          );
+          return JSON.parse(data).payload;
+};
+export function getPriceInfo():IpriceInfo | undefined{
+  return convertPrice(readPriceData())
+}
 export function executeFlow(
   helper: any,
   attrs: any,
@@ -105,9 +117,10 @@ export function executeFlow(
               encoding: "utf-8",
             },
           );
+
           let msg = {
             payload: Object.assign(
-              JSON.parse(data).payload,
+              readPriceData(),
               buildPayload(onOutput[0]).payload,
             ),
           };

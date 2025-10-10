@@ -7,5 +7,5 @@ export interface BaseNodeECConfig {
   maximaltemperature: number;
   increasetemperatureperhour: number;
   decreasetemperatureperhour: number;
-  periodsperhour:number;
+  tolerance:number;
 }

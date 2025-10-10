@@ -10,20 +10,18 @@ export interface EnergyConsumptionInput{
   hysteresis:number;
 }
 export class EnergyConsumption {
-  constructor(private inputData: EnergyConsumptionInput) {}
+  constructor(private inputData: EnergyConsumptionInput) {
+    if(this.inputData.config.tolerance == undefined)
+      this.inputData.config.tolerance =0;
+  }
   private getStartTime(time: number): number {
     this.checkConfig();
     let startPeriodTime = new Date(time);
-    let periodMinutes = Math.round(
-      Math.floor(
-        startPeriodTime.getMinutes() /
-          60 /
-          this.inputData.priceInfo.prices.periodlength,
-      ) *
-        (60 * this.inputData.priceInfo.prices.periodlength),
-    );
+    let periodlengthInMinutes =   60 / this.inputData.priceInfo.prices.periodsperhour;
+    let startMinute = (Math.ceil( startPeriodTime.getMinutes() /
+      (periodlengthInMinutes)))*periodlengthInMinutes;
     if (startPeriodTime.getMinutes() != 0)
-      startPeriodTime.setMinutes(periodMinutes);
+      startPeriodTime.setMinutes(startMinute);
     startPeriodTime.setSeconds(0);
     startPeriodTime.setMilliseconds(0);
     return startPeriodTime.getTime();
@@ -43,7 +41,7 @@ export class EnergyConsumption {
 
     if (!this.inputData.priceInfo.prices)
       throw new Error("EnergyConsumption: No priceInfo.prices");
-    if (!this.inputData.priceInfo.prices.periodlength)
+    if (!this.inputData.priceInfo.prices.periodsperhour)
       throw new Error("EnergyConsumption: No priceInfo.prices.periodlength");
   }
 
@@ -64,7 +62,7 @@ export class EnergyConsumption {
     var count=0;
     var temp=this.inputData.currenttemperature;
     this.inputData.priceInfo.priceDatas.forEach(price => {
-        temp -= this.inputData.decreasetemperatureperhour;
+        temp -= this.inputData.decreasetemperatureperhour / this.inputData.priceInfo.prices.periodsperhour;
         var minTemp;
         if(EnergyConsumption.isNightTime( this.inputData.config,price.start))
             minTemp= this.inputData.config.nighttemperature - this.inputData.hysteresis
@@ -82,8 +80,12 @@ export class EnergyConsumption {
   }
   setValueRanges( ranges:PriceData[], priceRangeSize:number){
      ranges.sort((a,b)=>a.value - b.value);
+    let lowestPrice = ranges[0].value + this.inputData.config.tolerance;
+
     for(let idx:number=0; idx < priceRangeSize;idx++)
-       ranges[idx].value = Math.floor(idx/priceRangeSize)
+      if( ranges[idx].value < lowestPrice){
+        ranges[idx].value = 0
+      }
     ranges.sort((a,b)=>a.start - b.start);
 
   }
@@ -126,15 +128,5 @@ export class EnergyConsumption {
       config.nightstarthour <= hour ||
       config.nightendhour > hour
     );
-  }
-  getPeriodLength() {
-    let periodlength = 1;
-    if (
-      this.inputData.priceInfo &&
-      this.inputData.priceInfo.prices &&
-      this.inputData.priceInfo.prices.periodlength
-    )
-      periodlength = this.inputData.priceInfo.prices.periodlength;
-    return periodlength;
   }
 }

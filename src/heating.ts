@@ -6,7 +6,7 @@ import { priceConverterFilterRegexs } from "./periodgenerator";
 const tConfig: TypeDescription = {
   typeFields: [],
   numberFields: [
-    { name: "periodsperhour", required: false },
+    { name: "tolerance", required: false },
     { name: "nightstarthour", required: false },
     { name: "nightendhour", required: false },
     { name: "nighttemperature", required: false },
@@ -45,6 +45,7 @@ export class HeatingNode extends BaseNodeEnergyConsumption<HeatingConfig> {
   buildNodeRedStatus():{color:"green"|"yellow"|"red", text:string}{
     let baseStatus = super.buildNodeRedStatus();
     let outerTempAvailable = (this && this.outertemperature != undefined); 
+    this.log("heatingStatus: " + (outerTempAvailable ? "Outer Temp. ": "No Outer Temp. ") );  
     return {
       color: (baseStatus.color in ["green", "yellow"] && outerTempAvailable) ? baseStatus.color : "red",
       text: baseStatus.text +

@@ -13,7 +13,7 @@ export interface IpriceInfo extends IpriceInfoSource {
   prices: {
     starttime: number;
     endtime: number;
-    periodlength: number;
+    periodsperhour: number;
   };
 }
 interface ItibberPriceInfo {
@@ -27,7 +27,7 @@ abstract class PriceConverter {
 class TibberPriceConverter extends PriceConverter {
   override convert(payload: any): IpriceInfoSource | undefined {
     if (undefined == payload) return undefined;
-    let p = payload;
+    let p = payload.payload ? payload.payload : payload;
     let pi: { today: ItibberPriceInfo[]; tomorrow: ItibberPriceInfo[] };
     if (
       p.viewer &&
@@ -103,46 +103,34 @@ let priceConverters: PriceConverter[] = [
 
 export const priceConverterFilterRegexs = [/^payload$/g, /^data$/g];
 
+function  getPeriodsPerHour(priceDatas: PriceData[]): number | undefined {
+      let periodsPerHour = undefined;
+      priceDatas.forEach((pd,idx) => {
+        if(idx < priceDatas.length -1){
+          let pph = Math.round( 60/ ((priceDatas[idx+1].start - pd.start   )/60/1000));
+          if(periodsPerHour == undefined)
+            periodsPerHour = pph;
+          else if (periodsPerHour != pph)
+            console.log("Different periods per hour in price data","warning");
+        } 
+      });
+      return periodsPerHour;
+  }
+
 export function convertPrice(
-  periodlength: number,
   payload: any,
 ): IpriceInfo | undefined {
   let rc: IpriceInfo = undefined;
-  let periodsperhour = Math.round(1 / periodlength);
   priceConverters.every((pc) => {
     let src = pc.convert(payload);
-    let additionalPeriods: PriceData[] = [];
-    if (rc && periodsperhour != 1)
-      rc.priceDatas.forEach((pd) => {
-        let dt = new Date(pd.start);
-        if (periodsperhour >= 2)
-          additionalPeriods.push({
-            start: dt.setHours(dt.getMinutes() + 30),
-            value: pd.value,
-          });
-        if (periodsperhour >= 4) {
-          additionalPeriods.push({
-            start: dt.setHours(dt.getMinutes() + 15),
-            value: pd.value,
-          });
-          additionalPeriods.push({
-            start: dt.setHours(dt.getMinutes() + 45),
-            value: pd.value,
-          });
-        }
-      });
-
-    if (additionalPeriods.length > 0) {
-      src.priceDatas = src.priceDatas.concat(additionalPeriods);
-      src.priceDatas.sort((a, b) => a.start - b.start);
-    }
+    let periodsperhour = getPeriodsPerHour(src.priceDatas);
     if (src)
       rc = {
         ...src,
         prices: {
           starttime: src.priceDatas[0].start,
           endtime: src.priceDatas[src.priceDatas.length - 1].start,
-          periodlength: periodlength,
+          periodsperhour: periodsperhour,
         },
       };
     return undefined == rc;

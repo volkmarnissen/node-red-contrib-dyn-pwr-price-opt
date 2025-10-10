@@ -1,3 +1,4 @@
+import { get } from "http";
 import { TypeDescription } from "./@types/basenode";
 import { BaseNodeECConfig } from "./@types/basenodeec";
 import { BaseNode } from "./basenode";
@@ -29,10 +30,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
   }
   readPricePayload(payload: any): boolean {
     if (!this.config) throw new Error("config is not available.");
-    let periodsPerHour = 1;
-    if (this.config.periodsperhour != undefined && this.config.periodsperhour != 0)
-      periodsPerHour = this.config.periodsperhour;
-    let rc = convertPrice(periodsPerHour, payload);
+    let rc = convertPrice( payload);
     if (undefined != rc) this.priceInfo = rc;
     let st = this.buildNodeRedStatus();
     this.sendNodeRedStatus(st.text, st.color);
@@ -40,11 +38,16 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
     // Allow other listeners to process the message
     return false;
   }
+
   buildNodeRedStatus():{color:"green"|"yellow"|"red", text:string}{
     let pricesAvailable = (this && this.priceInfo && this.priceInfo.prices && this.priceInfo.priceDatas.length > 0);
     let tempAvailable = (this && this.currenttemperature != undefined); 
     let hysteresisAvailable = (this && this.hysteresis != undefined);
     let lastSetPointTimeStr = this.lastSetPointTime ? new Date(this.lastSetPointTime).toLocaleTimeString() : "never";
+    this.log("baseStatus: " + (pricesAvailable ? "Prices. " : "No Prices. ") +
+            (tempAvailable ? "Temp. " : "No temperature. ") +
+            (hysteresisAvailable ? "Hysteresis.": "No hysteresis.") +
+            " Last Update: " + lastSetPointTimeStr);  
     return {
       color: (pricesAvailable && tempAvailable && hysteresisAvailable) ? this.lastSetPointTime ? "green":"yellow" : "red",
       text: "Last Update: " + lastSetPointTimeStr + (pricesAvailable ?  "" : "No Prices. ") +
@@ -133,7 +136,7 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
         this.lastSetPointTime = time;
         let st = this.buildNodeRedStatus();
         this.sendNodeRedStatus(st.text, st.color);
-        this.log("Setpoint " + value + " at " + new Date(time).toLocaleTimeString() +(value != this.lastSetPoint ? " changed":" unchanged"));
+        this.log("Setpoint " + value + " at " + new Date(time).toLocaleTimeString() +(value != this.lastSetPoint ? " changed ":" unchanged") + "("  + + this.lastSetPoint +")");
         if (value != this.lastSetPoint) {
           if (typeof value === "number")
             this.send([
@@ -171,7 +174,6 @@ export abstract class BaseNodeEnergyConsumption<T extends BaseNodeECConfig> exte
         this.onFullHour.bind(this),
         1000 * 60 * 60,
       );
-      this.onFullHour(time);
     } else {
       nextFullHour = new Date(time);
       nextFullHour.setHours(nextFullHour.getHours() + 1);

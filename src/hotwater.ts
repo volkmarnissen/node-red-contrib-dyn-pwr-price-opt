@@ -4,7 +4,7 @@ import { BaseNodeEnergyConsumption } from "./basenodeec";
 const tConfig: TypeDescription = {
   typeFields: [],
   numberFields: [
-    { name: "periodsperhour", required: false },
+    { name: "tolerance", required: false },
     { name: "nightstarthour", required: false },
     { name: "nightendhour", required: false },
     { name: "nighttemperature", required: false },
